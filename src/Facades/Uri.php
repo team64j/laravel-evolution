@@ -13,6 +13,6 @@ class Uri extends Facade
      */
     protected static function getFacadeAccessor(): string
     {
-        return 'uri';
+        return 'cms.uri';
     }
 }

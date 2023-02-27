@@ -13,6 +13,6 @@ class Core extends Facade
      */
     protected static function getFacadeAccessor(): string
     {
-        return 'core';
+        return 'cms.core';
     }
 }
