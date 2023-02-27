@@ -7,6 +7,7 @@ namespace Team64j\LaravelEvolution\Http\Controllers;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller as BaseController;
+use Team64j\LaravelEvolution\Facades\Core;
 
 class Controller extends BaseController
 {
@@ -14,6 +15,6 @@ class Controller extends BaseController
 
     public function index()
     {
-        return [];
+        return Core::run();
     }
 }
