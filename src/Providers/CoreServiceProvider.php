@@ -6,9 +6,12 @@ namespace Team64j\LaravelEvolution\Providers;
 
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Team64j\LaravelEvolution\Http\Controllers\Controller;
 use Team64j\LaravelEvolution\Managers\CoreManager;
+use Team64j\LaravelEvolution\Managers\UriManager;
+use Team64j\LaravelEvolution\Models\User;
 
 class CoreServiceProvider extends ServiceProvider
 {
@@ -26,6 +29,9 @@ class CoreServiceProvider extends ServiceProvider
             $this->app['router']->getRoutes()->match($this->app['request']);
         } catch (Exception $exception) {
             $this->app->alias(CoreManager::class, 'core');
+            $this->app->alias(UriManager::class, 'uri');
+
+            Config::set('auth.providers.users.model', User::class);
 
             $this->app['router']->addRoute(
                 $this->app['request']->getMethod(),
