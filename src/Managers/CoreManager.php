@@ -109,7 +109,7 @@ class CoreManager
             } else {
                 $content = $this->resourceObject['tpl']['content'] ?? null;
 
-                if (Config::get('global.site_unavailable_page') == $this->documentIdentifier/* && is_null($content)*/) {
+                if (Config::get('global.site_unavailable_page') == $this->documentIdentifier && is_null($content)) {
                     $content = Config::get('global.site_unavailable_message');
                 }
 
