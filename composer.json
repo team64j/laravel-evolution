@@ -19,5 +19,12 @@
     "psr-4": {
       "Team64j\\LaravelEvolution\\": "src"
     }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Team64j\\LaravelEvolution\\Providers\\CoreServiceProvider"
+      ]
+    }
   }
 }
