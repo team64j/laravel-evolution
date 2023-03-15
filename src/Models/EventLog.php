@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $type
  * @property int $user
  * @property int $eventid
+ * @property string $source
+ * @property string $createdon
+ * @property string $description
  * @property User $users
  */
 class EventLog extends Model
