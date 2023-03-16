@@ -15,6 +15,19 @@ use Team64j\LaravelEvolution\Models\User;
 class CoreServiceProvider extends ServiceProvider
 {
     /**
+     * @var bool
+     */
+    protected bool $isManager = false;
+
+    /**
+     * @return void
+     */
+    public function boot(): void
+    {
+        $this->isManager = str_starts_with($this->app['request']->getPathInfo(), '/' . Config::get('cms.mgr_dir'));
+    }
+
+    /**
      * @return void
      */
     public function register(): void
@@ -22,6 +35,10 @@ class CoreServiceProvider extends ServiceProvider
         $this->registerAliases();
 
         $this->booted(function () {
+            if ($this->isManager) {
+                return;
+            }
+
             try {
                 $this->app['router']->getRoutes()->match($this->app['request']);
             } catch (Exception $exception) {
