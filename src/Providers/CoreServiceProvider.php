@@ -24,7 +24,7 @@ class CoreServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->isManager = str_starts_with($this->app['request']->getPathInfo(), '/' . Config::get('cms.mgr_dir'));
+        $this->isManager = Config::get('cms.mgr_dir') && str_starts_with($this->app['request']->getPathInfo(), '/' . Config::get('cms.mgr_dir'));
     }
 
     /**
