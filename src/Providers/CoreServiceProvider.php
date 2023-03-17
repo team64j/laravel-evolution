@@ -5,52 +5,70 @@ declare(strict_types=1);
 namespace Team64j\LaravelEvolution\Providers;
 
 use Exception;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
 use Team64j\LaravelEvolution\Http\Controllers\Controller;
 use Team64j\LaravelEvolution\Managers\CoreManager;
 use Team64j\LaravelEvolution\Managers\UriManager;
+use Team64j\LaravelEvolution\Models\SystemSetting;
 use Team64j\LaravelEvolution\Models\User;
 
 class CoreServiceProvider extends ServiceProvider
 {
     /**
-     * @var bool
-     */
-    protected bool $isManager = false;
-
-    /**
      * @return void
      */
-    public function boot(): void
+    public function register(): void
     {
-        $this->isManager = Config::get('cms.mgr_dir') && str_starts_with($this->app['request']->getPathInfo(), '/' . Config::get('cms.mgr_dir'));
+        $this->mergeConfig();
+        $this->registerAliases();
+
+        $mgrDir = Config::get('cms.mgr_dir');
+
+        if ($mgrDir && str_starts_with($this->app['request']->getPathInfo(), '/' . $mgrDir)) {
+            return;
+        }
+
+        $this->booted(function () {
+            /** @var Router $router */
+            $router = $this->app['router'];
+
+            try {
+                $this->app['router']->getRoutes()->match($this->app['request']);
+            } catch (Exception $exception) {
+                $this->registerConfig();
+
+                Config::set('auth.providers.users.model', User::class);
+
+                $router->any('{any}', [Controller::class, 'index'])
+                    ->middleware('web')
+                    ->where('any', '.*');
+            }
+        });
     }
 
     /**
      * @return void
      */
-    public function register(): void
+    protected function mergeConfig(): void
     {
-        $this->registerAliases();
+        $this->mergeConfigFrom(realpath(__DIR__ . '/../../config/cms.php'), 'cms');
+    }
 
-        $this->booted(function () {
-            if ($this->isManager) {
-                return;
-            }
-
-            try {
-                $this->app['router']->getRoutes()->match($this->app['request']);
-            } catch (Exception $exception) {
-                Config::set('auth.providers.users.model', User::class);
-
-                $this->app['router']->addRoute(
-                    $this->app['request']->getMethod(),
-                    $this->app['request']->getPathInfo(),
-                    [Controller::class, 'index']
-                )->middleware(['web']);
-            }
-        });
+    /**
+     * @return void
+     */
+    protected function registerConfig(): void
+    {
+        if (!Config::has('global')) {
+            Config::set(
+                'global',
+                SystemSetting::query()
+                    ->pluck('setting_value', 'setting_name')
+                    ->toArray()
+            );
+        }
     }
 
     /**
