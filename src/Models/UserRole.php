@@ -7,6 +7,9 @@ namespace Team64j\LaravelEvolution\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property string $name
+ */
 class UserRole extends Model
 {
     /**
