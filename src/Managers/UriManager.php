@@ -35,11 +35,11 @@ class UriManager
     }
 
     /**
-     * @param int $id
+     * @param int|null $id
      *
      * @return array|null
      */
-    public function getRouteById(int $id): ?array
+    public function getRouteById(int $id = null): ?array
     {
         if (!$id) {
             return null;
