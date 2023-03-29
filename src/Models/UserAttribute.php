@@ -152,4 +152,12 @@ class UserAttribute extends Model
     {
         return $this->hasOne(UserRole::class, 'id', 'role');
     }
+
+    /**
+     * @return HasOne
+     */
+    public function roles(): HasOne
+    {
+        return $this->hasOne(UserRole::class, 'id', 'role');
+    }
 }
