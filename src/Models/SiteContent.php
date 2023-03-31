@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Models;
 
-use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Lang;
+use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 
 /**
  * @property int $id
@@ -51,6 +52,29 @@ class SiteContent extends Model
      * @var bool
      */
     public $timestamps = false;
+
+    /**
+     * @param array $attributes
+     */
+    public function __construct(array $attributes = [])
+    {
+        $this->setRawAttributes([
+            'published' => Config::get('global.publish_default'),
+            'template' => Config::get('global.default_template'),
+            'hide_from_tree' => 0,
+            'alias_visible' => 1,
+            'richtext' => 1,
+            'menuindex' => 0,
+            'searchable' => Config::get('global.search_default'),
+            'cacheable' => Config::get('global.cache_default'),
+            'type' => 'document',
+            'contentType' => 'text/html',
+            'parent' => 0,
+            'content_dispo' => 0,
+        ], true);
+
+        parent::__construct($attributes);
+    }
 
     /**
      * @var array|string[]
@@ -153,16 +177,30 @@ class SiteContent extends Model
         $docTv = $this->templateValues->pluck('value', 'tmplvarid');
 
         return $this->tpl->tvs->map(function (SiteTmplvar $tmplvar) use ($docTv) {
-            $out = $docTv->has($tmplvar->getKey()) ? $docTv->get($tmplvar->getKey()) : $tmplvar->default_text;
+            $value = $docTv->has($tmplvar->getKey()) ? $docTv->get($tmplvar->getKey()) : $tmplvar->default_text;
+
+            switch ($tmplvar->type) {
+                case 'radio':
+                case 'checkbox':
+                case 'option':
+                case 'listbox-multiple':
+                    if (!is_array($value)) {
+                        $value = $value == '' ? [] : explode('||', $value);
+                    }
+
+                    break;
+
+                default:
+            }
 
             return array_merge(
                 $tmplvar->withoutRelations()->toArray(),
                 [
-                    'value' => $out,
+                    'value' => $value,
                     'category_name' => $tmplvar->category
                         ? $tmplvar->categories->category
                         : Lang::get('global.no_category'),
-                    'pivot_rank' => $tmplvar->pivot->rank
+                    'pivot_rank' => $tmplvar->pivot->rank,
                 ]
             );
         });

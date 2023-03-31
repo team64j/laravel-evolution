@@ -14,6 +14,7 @@ use Symfony\Component\Finder\Finder;
  * @property int $id
  * @property int $category
  * @property int $locked
+ * @property string $type
  * @property string $default_text
  * @property Category $categories
  */
