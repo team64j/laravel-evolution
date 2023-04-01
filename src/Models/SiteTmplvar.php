@@ -221,4 +221,12 @@ class SiteTmplvar extends Model
 
         return $customTvs;
     }
+
+    /**
+     * @return array
+     */
+    public function getStandardTypes(): array
+    {
+        return $this->standardTypes;
+    }
 }
