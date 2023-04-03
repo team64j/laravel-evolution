@@ -30,6 +30,7 @@ use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
  * @property SiteTemplate $tpl
  * @property SiteContent $parents
  * @property SiteTmplvarContentvalue[]|Collection $templateValues
+ * @property DocumentgroupName[]|Collection $documentGroups
  */
 class SiteContent extends Model
 {
