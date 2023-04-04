@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Models;
 
-use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 
 /**
  * @property int $id
@@ -59,6 +59,19 @@ class SiteTemplate extends Model
         'locked',
         'selectable',
     ];
+
+    /**
+     * @param array $attributes
+     */
+    public function __construct(array $attributes = [])
+    {
+        $this->setRawAttributes([
+            'category' => 0,
+            'selectable' => 1,
+        ]);
+
+        parent::__construct($attributes);
+    }
 
     /**
      * @return BelongsTo
