@@ -66,6 +66,7 @@ class SiteTemplate extends Model
     public function __construct(array $attributes = [])
     {
         $this->setRawAttributes([
+            'icon' => '',
             'category' => 0,
             'selectable' => 1,
         ]);
