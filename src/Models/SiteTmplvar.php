@@ -12,6 +12,9 @@ use Symfony\Component\Finder\Finder;
 
 /**
  * @property int $id
+ * @property string $name
+ * @property string $caption
+ * @property string $description
  * @property int $category
  * @property int $locked
  * @property string $type
