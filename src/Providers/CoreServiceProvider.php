@@ -30,22 +30,24 @@ class CoreServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->booted(function () {
-            /** @var Router $router */
-            $router = $this->app['router'];
+        if ($this->app->runningInConsole()) {
+            $this->booted(function () {
+                /** @var Router $router */
+                $router = $this->app['router'];
 
-            try {
-                $this->app['router']->getRoutes()->match($this->app['request']);
-            } catch (Exception $exception) {
-                $this->registerConfig();
+                try {
+                    $this->app['router']->getRoutes()->match($this->app['request']);
+                } catch (Exception $exception) {
+                    $this->registerConfig();
 
-                Config::set('auth.providers.users.model', User::class);
+                    Config::set('auth.providers.users.model', User::class);
 
-                $router->any('{any}', [Controller::class, 'index'])
-                    ->middleware('web')
-                    ->where('any', '.*');
-            }
-        });
+                    $router->any('{any}', [Controller::class, 'index'])
+                        ->middleware('web')
+                        ->where('any', '.*');
+                }
+            });
+        }
     }
 
     /**
