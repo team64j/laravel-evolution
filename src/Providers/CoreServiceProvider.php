@@ -30,7 +30,7 @@ class CoreServiceProvider extends ServiceProvider
             return;
         }
 
-        if ($this->app->runningInConsole()) {
+        if (!$this->app->runningInConsole()) {
             $this->booted(function () {
                 /** @var Router $router */
                 $router = $this->app['router'];
