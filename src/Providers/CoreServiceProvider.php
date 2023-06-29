@@ -56,6 +56,10 @@ class CoreServiceProvider extends ServiceProvider
     protected function mergeConfig(): void
     {
         $this->mergeConfigFrom(realpath(__DIR__ . '/../../config/cms.php'), 'cms');
+
+        if (!$this->app->configurationIsCached()) {
+            Config::set('database.connections.' . Config::get('database.default') . '.prefix', env('DB_PREFIX', ''));
+        }
     }
 
     /**
