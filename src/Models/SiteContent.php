@@ -150,6 +150,26 @@ class SiteContent extends Model
      *
      * @return string
      */
+    public function setMenutitleAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function setLinkAttributesAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
     public function getCreatedonAttribute($value): string
     {
         return $this->convertDateTime($value);
