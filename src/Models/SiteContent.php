@@ -150,6 +150,26 @@ class SiteContent extends Model
      *
      * @return string
      */
+    public function setDescriptionAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function setIntrotextAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
     public function setMenutitleAttribute($value): string
     {
         return (string) $value;
@@ -160,7 +180,47 @@ class SiteContent extends Model
      *
      * @return string
      */
+    public function setLongtitleAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
     public function setLinkAttributesAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function setCreatedonAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function setEditedonAttribute($value): string
+    {
+        return (string) $value;
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function setPublishedonAttribute($value): string
     {
         return (string) $value;
     }
