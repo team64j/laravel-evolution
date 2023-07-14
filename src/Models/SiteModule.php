@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
+use Team64j\LaravelEvolution\Traits\LockedTrait;
 
 /**
  * @property int $category
@@ -17,9 +18,12 @@ use Illuminate\Support\Facades\Config;
  * @property string $modulecode
  * @property string $description
  * @property Category $categories
+ * @method static Builder withoutProtected()
  */
 class SiteModule extends Model
 {
+    use LockedTrait;
+
     const CREATED_AT = 'createdon';
     const UPDATED_AT = 'editedon';
 
@@ -66,7 +70,7 @@ class SiteModule extends Model
     /**
      * @return BelongsTo
      */
-    public function categories(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
     }
@@ -78,7 +82,7 @@ class SiteModule extends Model
      */
     public function scopeWithoutProtected(Builder $builder): Builder
     {
-        if (Auth::user()['attributes']->role != 1 && Config::get('global.use_udperms')) {
+        if (!Auth::user()->isAdmin() && Config::get('global.use_udperms')) {
             $userGroups = MemberGroup::query()->where('member', Auth::user()->id)->get()->pluck('user_group');
             $moduleIds = SiteModuleAccess::query()->whereIn('usergroup', $userGroups)->get()->pluck('module');
             $builder->whereIn('id', $moduleIds);

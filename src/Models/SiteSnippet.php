@@ -6,6 +6,7 @@ namespace Team64j\LaravelEvolution\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Team64j\LaravelEvolution\Traits\LockedTrait;
 
 /**
  * @property int $category
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SiteSnippet extends Model
 {
+    use LockedTrait;
+
     const CREATED_AT = 'createdon';
     const UPDATED_AT = 'editedon';
 
@@ -56,7 +59,7 @@ class SiteSnippet extends Model
     /**
      * @return BelongsTo
      */
-    public function categories(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
     }

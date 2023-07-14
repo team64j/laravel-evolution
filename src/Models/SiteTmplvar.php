@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
+use Team64j\LaravelEvolution\Traits\LockedTrait;
 
 /**
  * @property int $id
@@ -23,6 +24,8 @@ use Symfony\Component\Finder\Finder;
  */
 class SiteTmplvar extends Model
 {
+    use LockedTrait;
+
     public const CREATED_AT = 'createdon';
     public const UPDATED_AT = 'editedon';
 
@@ -89,7 +92,7 @@ class SiteTmplvar extends Model
     /**
      * @return BelongsTo
      */
-    public function categories(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
     }

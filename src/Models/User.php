@@ -7,6 +7,7 @@ namespace Team64j\LaravelEvolution\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * @property string $username
@@ -91,5 +92,13 @@ class User extends \Illuminate\Foundation\Auth\User
         $this->settings()->delete();
 
         return parent::delete();
+    }
+
+    /**
+     * @return bool
+     */
+    public function isAdmin(): bool
+    {
+        return Auth::check() && $this['attributes']->userRole->name === 'Administrator';
     }
 }

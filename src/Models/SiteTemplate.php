@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Team64j\LaravelEvolution\Traits\LockedTrait;
 use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 
 /**
@@ -21,6 +22,7 @@ use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
  */
 class SiteTemplate extends Model
 {
+    use LockedTrait;
     use TimeMutatorTrait;
 
     public const CREATED_AT = 'createdon';
@@ -77,7 +79,7 @@ class SiteTemplate extends Model
     /**
      * @return BelongsTo
      */
-    public function categories(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
     }

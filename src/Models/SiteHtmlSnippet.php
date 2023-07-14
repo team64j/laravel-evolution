@@ -6,6 +6,7 @@ namespace Team64j\LaravelEvolution\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Team64j\LaravelEvolution\Traits\LockedTrait;
 
 /**
  * @property Category $categories
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SiteHtmlSnippet extends Model
 {
+    use LockedTrait;
+
     /**
      * @var string
      */
@@ -59,7 +62,7 @@ class SiteHtmlSnippet extends Model
     /**
      * @return BelongsTo
      */
-    public function categories(): BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
     }
