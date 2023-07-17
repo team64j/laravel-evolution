@@ -257,7 +257,7 @@ class SiteContent extends Model
 
         $docTv = $this->templateValues->pluck('value', 'tmplvarid');
 
-        return $this->tpl->tvs->map(function (SiteTmplvar $tmplvar) use ($docTv) {
+        return $this->tpl->tvs()->with('category')->get()->map(function (SiteTmplvar $tmplvar) use ($docTv) {
             $value = $docTv->has($tmplvar->getKey()) ? $docTv->get($tmplvar->getKey()) : $tmplvar->default_text;
 
             switch ($tmplvar->type) {
@@ -274,13 +274,13 @@ class SiteContent extends Model
                 default:
             }
 
+            $category = $tmplvar->getRelation('category');
+
             return array_merge(
                 $tmplvar->withoutRelations()->toArray(),
                 [
                     'value' => $value,
-                    'category_name' => $tmplvar->category
-                        ? $tmplvar->categories->category
-                        : Lang::get('global.no_category'),
+                    'category_name' => $category->category ?: Lang::get('global.no_category'),
                     'pivot_rank' => $tmplvar->pivot->rank,
                 ]
             );
