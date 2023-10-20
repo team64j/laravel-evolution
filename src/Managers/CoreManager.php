@@ -89,7 +89,10 @@ class CoreManager
 
             $this->documentObject = array_merge(
                 $this->resourceObject['document'],
-                $this->resourceObject['tvs']
+                array_map(
+                    fn($tv) => $this->renderTv($tv),
+                    $this->resourceObject['tvs']
+                )
             );
         }
 
@@ -107,11 +110,9 @@ class CoreManager
             if (isset($template) && View::exists($template)) {
                 $content = View::make($template, $data)->render();
             } else {
-                $content = $this->resourceObject['tpl']['content'] ?? null;
+                $content = $this->resourceObject['tpl']['content'] ?: null;
 
-                if (Config::get('global.site_unavailable_page') == $this->documentIdentifier && is_null($content)
-                    || (Config::get('global.site_unavailable_page') != $this->documentIdentifier && !$content)
-                ) {
+                if (Config::get('global.site_unavailable_page') == $this->documentIdentifier && is_null($content)) {
                     $content = Config::get('global.site_unavailable_message');
                 }
 
@@ -119,12 +120,19 @@ class CoreManager
                 $content = Blade::render($template, $data, true);
             }
 
-            $status = match ($this->documentIdentifier) {
-                (int) Config::get('global.error_page') => 404,
-                (int) Config::get('global.unauthorized_page') => 403,
-                (int) Config::get('global.site_unavailable_page') => 500,
-                default => 200,
-            };
+            switch ($this->documentIdentifier) {
+                case (int) Config::get('global.error_page'):
+                    $status = 404;
+                    break;
+                case (int) Config::get('global.error_page'):
+                    $status = 403;
+                    break;
+                case (int) Config::get('global.error_page'):
+                    $status = 500;
+                    break;
+                default:
+                    $status = 200;
+            }
 
             $headers = [
                 'Content-Type' => $this->documentObject['contentType'] ?? 'text/html',
@@ -293,10 +301,10 @@ class CoreManager
         $matches = $this->getTagsFromContent($content, $prefix, $suffix);
 
         foreach ($matches[1] as $key) {
-            $value = $this->documentObject['document'][$key] ?? null;
+            $value = $this->resourceObject['document'][$key] ?? null;
 
             if (is_null($value)) {
-                $value = $this->documentObject['tvs'][$key]['value'] ?? null;
+                $value = $this->resourceObject['tvs'][$key]['value'] ?? null;
             }
 
             if (is_null($value)) {
@@ -591,6 +599,26 @@ class CoreManager
         return '';
     }
 
+    /**
+     * @param array $data
+     *
+     * @return string
+     */
+    public function renderTv(array $data = []): string
+    {
+        if (is_array($data['value'])) {
+            $data['value'] = implode(',', $data['value']);
+        }
+
+        return (string) ($data['value'] != '' ? $data['value'] : $data['default_text']);
+    }
+
+    /**
+     * @param string $key
+     * @param $default
+     *
+     * @return mixed
+     */
     public function getConfig(string $key, $default = null)
     {
         return Config::get('global.' . $key, $default);
