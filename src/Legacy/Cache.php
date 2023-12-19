@@ -283,7 +283,7 @@ class Cache
             $result = Models\SiteContent::query()
                 ->where('deleted', 0)
                 ->when(
-                    $config['alias_listing'] == 2,
+                    isset($config['alias_listing']) && $config['alias_listing'] == 2,
                     fn($q) => $q->where('isfolder', 1)
                 )
                 ->get([

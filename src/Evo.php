@@ -243,6 +243,11 @@ class Evo
         return self::$instance;
     }
 
+    public function get($name)
+    {
+        return app('evo.' . $name);
+    }
+
     /**
      * @see: https://stackoverflow.com/a/13186679/2323306
      *
@@ -1887,11 +1892,17 @@ class Evo
      */
     public function evalPlugin($pluginCode, $params)
     {
+        ini_set('display_errors', '1');
+        ini_set('display_startup_errors', '1');
+        error_reporting(E_ALL);
+
         $modx = &$this;
         if (!is_object($modx->event)) {
             $modx->event = new \stdClass();
         }
+
         $modx->event->params = &$params; // store params inside event object
+
         if (is_array($params)) {
             extract($params, EXTR_SKIP);
         }
@@ -3123,13 +3134,13 @@ class Evo
     {
         $parents = [];
         while ($id && $height--) {
-            $aliasListing = get_by_key(app('evo.url')->aliasListing, $id, [], 'is_array');
-            $tmp = get_by_key($aliasListing, 'parent');
+            $aliasListing =app('evo.url')->aliasListing[$id] ?? [];
+            $tmp = $aliasListing['parent'];
 
             $current_id = $id;
 
             if ($this->getConfig('alias_listing') != 1) {
-                $id = $tmp ?? (int) Models\SiteContent::findOrNew($id)->parent;
+                $id = $tmp ?? (int) Models\SiteContent::query()->findOrNew($id)->parent;
             } else {
                 $id = $tmp;
             }
@@ -3383,7 +3394,7 @@ class Evo
 
         // Build lockedElements-Cache at first call
         $this->buildLockedElementsCache();
-        if (!$includeThisUser && get_by_key($this->lockedElements, $type . '.' . $id . '.sid') == $this->sid) {
+        if (!$includeThisUser && ($this->lockedElements[$type . '.' . $id . '.sid'] ?? null) == $this->sid) {
             return null;
         }
 
@@ -5626,8 +5637,8 @@ class Evo
             }
         }
         $name = isset($options['name']) ? strtolower($options['name']) : '';
-        $version = isset($options['version']) ? $options['version'] : '0';
-        $plaintext = isset($options['plaintext']) ? $options['plaintext'] : false;
+        $version = $options['version'] ?? '0';
+        $plaintext = $options['plaintext'] ?? false;
         $key = !empty($name) ? $name : $src;
         unset($overwritepos); // probably unnecessary--just making sure
 
@@ -5810,7 +5821,7 @@ class Evo
             return;
         }
 
-        $results = null;
+        $results = [];
 
         if (!$evtName) {
             return false;
@@ -5830,7 +5841,7 @@ class Evo
         }
 
         if (!isset($this->pluginEvent[$evtName])) {
-            return $results ?? false;
+            return $results ?: false;
         }
 
         $this->storeEvent();
@@ -6435,13 +6446,9 @@ class Evo
                     ->toArray();
             }
 
-            $which_browser_default = get_by_key(
-                $this->configGlobal,
-                'which_browser',
-                $this->getConfig('which_browser')
-            );
+            $which_browser_default = $this->configGlobal['which_browser'] ?? $this->getConfig('which_browser');
 
-            if (get_by_key($usrSettings, 'which_browser') === 'default') {
+            if (($usrSettings['which_browser'] ?? null) === 'default') {
                 $usrSettings['which_browser'] = $which_browser_default;
             }
 
@@ -6939,4 +6946,13 @@ class Evo
         $abstract = Arr::get($this->evolutionProperty, $property, null);
         return $abstract === null ? null : $this->$abstract();
     }
+
+    /**
+     * @return mixed
+     */
+    public function getDeprecatedCore()
+    {
+        return app('evo.deprecated');
+    }
+
 }

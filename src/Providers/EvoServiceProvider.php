@@ -44,6 +44,8 @@ class EvoServiceProvider extends ServiceProvider
         $this->app->singleton('evo.url', fn() => new Legacy\UrlProcessor());
         $this->app->singleton('evo.tpl', fn() => new Legacy\Parser());
         $this->app->singleton('evo.db', fn() => new Legacy\Database());
+        $this->app->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
+        $this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
     }
 
     /**

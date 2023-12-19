@@ -63,3 +63,44 @@ if (!function_exists('removeSanitizeSeed')) {
         return str_replace(MODX_SANITIZE_SEED, '', $string);
     }
 }
+
+if (!function_exists('rename_key_arr')) {
+    /**
+     * Renaming array elements
+     *
+     * @param array $data
+     * @param string $prefix
+     * @param string $suffix
+     * @param string $addPS separator prefix/suffix and array keys
+     * @param string $sep flatten an multidimensional array and combine keys with separator
+     *
+     * @return array
+     */
+    function rename_key_arr(array $data, string $prefix = '', string $suffix = '', string $addPS = '.', string $sep = '.'): array
+    {
+        if ($prefix === '' && $suffix === '') {
+            return $data;
+        }
+
+        $InsertPrefix = ($prefix !== '') ? $prefix . $addPS : '';
+        $InsertSuffix = ($suffix !== '') ? $addPS . $suffix : '';
+        $out = [];
+        foreach ($data as $key => $item) {
+            $key = $InsertPrefix . $key;
+            $val = null;
+            switch (true) {
+                case is_scalar($item):
+                    $val = $item;
+                    break;
+                case is_array($item):
+                    $val = rename_key_arr($item, $key . $sep, $InsertSuffix, '', $sep);
+                    $out = array_merge($out, $val);
+                    $val = '';
+                    break;
+            }
+            $out[$key . $InsertSuffix] = $val;
+        }
+
+        return $out;
+    }
+}

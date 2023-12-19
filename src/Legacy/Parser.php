@@ -25,10 +25,13 @@ class Parser
      */
     protected static $instance;
 
-    protected $templatePath = 'assets/templates/';
+    protected $templatePath = 'views/';
 
     protected $templateExtension = 'html';
 
+    /**
+     * @var \Illuminate\View\Factory
+     */
     public $blade;
 
     protected $bladeEnabled = true;
@@ -433,14 +436,14 @@ class Parser
                     $item = $this->renameKeyArr($data, '[', ']', '+');
                     $out = str_replace(array_keys($item), array_values($item), $out);
                 }
-                if (!$disablePHx && preg_match("/:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?/is", $out)) {
-                    if (is_null($this->phx) || !($this->phx instanceof Phx)) {
-                        $this->phx = $this->createPHx(0, 1000);
-                    }
-                    $this->phx->placeholders = [];
-                    $this->setPHxPlaceholders($data);
-                    $out = $this->phx->Parse($out);
-                }
+//                if (!$disablePHx && preg_match("/:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?/is", $out)) {
+//                    if (is_null($this->phx) || !($this->phx instanceof Phx)) {
+//                        $this->phx = $this->createPHx(0, 1000);
+//                    }
+//                    $this->phx->placeholders = [];
+//                    $this->setPHxPlaceholders($data);
+//                    $out = $this->phx->Parse($out);
+//                }
                 break;
         }
         if ($parseDocumentSource && !$blade) {
