@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Lang;
+use Team64j\LaravelEvolution\Traits\SoftDeletes;
 use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 
 /**
@@ -35,9 +36,12 @@ use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
 class SiteContent extends Model
 {
     use TimeMutatorTrait;
+    use SoftDeletes;
 
     public const CREATED_AT = 'createdon';
     public const UPDATED_AT = 'editedon';
+    const DELETED_AT = 'deletedon';
+    const DELETED = 'deleted';
 
     /**
      * @var string
@@ -325,5 +329,44 @@ class SiteContent extends Model
     public function children(): HasMany
     {
         return $this->hasMany(SiteContent::class, 'parent', 'id')->with('children');
+    }
+
+    public function scopeWithoutProtected($query)
+    {
+        $query->leftJoin('document_groups', 'document_groups.document', '=', 'site_content.id');
+        $query->where(function ($query) {
+            $docgrp = evo()->getUserDocGroups();
+            if (evo()->isFrontend()) {
+                $query->where('privateweb', 0);
+            } else {
+                $query->whereRaw('1 = ' . ($_SESSION['mgrRole'] ?? 0));
+                $query->orWhere('site_content.privatemgr', 0);
+            }
+            if ($docgrp) {
+                $query->orWhereIn('document_groups.document_group', $docgrp);
+            }
+        });
+
+        return $query;
+    }
+
+    /**
+     * Get the name of the "deleted" column.
+     *
+     * @return string
+     */
+    public function getDeletedColumn()
+    {
+        return defined('static::DELETED') ? static::DELETED : 'deleted';
+    }
+
+    /**
+     * Get the fully qualified "deleted" column.
+     *
+     * @return string
+     */
+    public function getQualifiedDeletedColumn()
+    {
+        return $this->qualifyColumn($this->getDeletedColumn());
     }
 }
