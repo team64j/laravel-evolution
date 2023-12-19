@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Team64j\LaravelEvolution\Traits\LockedTrait;
@@ -14,6 +15,7 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property int $disabled
  * @property string $description
  * @property Category $categories
+ * @method static Builder|SitePlugin activePhx()
  */
 class SitePlugin extends Model
 {
@@ -67,5 +69,11 @@ class SitePlugin extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category', 'id');
+    }
+
+    public function scopeActivePhx(Builder $builder)
+    {
+        return $builder->where('disabled', '!=', 1)
+            ->where('plugincode', 'LIKE', "%phx.parser.class.inc.php%OnParseDocument();%");
     }
 }

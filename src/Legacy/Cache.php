@@ -2,6 +2,7 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
+use DocumentParser;
 use Team64j\LaravelEvolution\Models;
 
 /**
@@ -234,7 +235,7 @@ class Cache
             $timesArr[] = $minpub;
         }
 
-        if (isset($this->cacheRefreshTime) && !empty($this->cacheRefreshTime)) {
+        if (!empty($this->cacheRefreshTime)) {
             $timesArr[] = $this->cacheRefreshTime;
         }
 
@@ -250,7 +251,7 @@ class Cache
     /**
      * build siteCache file
      *
-     * @param \DocumentParser $modx
+     * @param DocumentParser $modx
      *
      * @return boolean success
      */
@@ -450,10 +451,10 @@ class Cache
      * @see http://php.net/manual/en/tokenizer.examples.php
      */
     // phpcs:ignore
-    public function php_strip_whitespace($source)
+    public function php_strip_whitespace(string $source): string
     {
         $source = trim($source);
-        if (substr($source, 0, 5) !== '<?php') {
+        if (!str_starts_with($source, '<?php')) {
             $source = '<?php ' . $source;
         }
 
@@ -461,7 +462,7 @@ class Cache
         $_ = '';
         $prev_token = 0;
         $chars = explode(' ', '( ) ; , = { } ? :');
-        foreach ($tokens as $i => $token) {
+        foreach ($tokens as $token) {
             if (is_string($token)) {
                 if (in_array($token, ['=', ':'])) {
                     $_ = trim($_);
@@ -519,8 +520,7 @@ class Cache
             ['', ' ', "\n" . '<!--', '-->' . "\n", '-->' . "\n" . '<!--'],
             $_
         );
-        $source = trim($source);
 
-        return $source;
+        return trim($source);
     }
 }

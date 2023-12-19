@@ -1,24 +1,22 @@
 <?php
 
-use Team64j\LaravelEvolution\Evo;
-
 if (!function_exists('evolutionCMS')) {
     /**
-     * @return Evo
+     * @return DocumentParser
      */
-    function evolutionCMS()
+    function evolutionCMS(): DocumentParser
     {
-        return app()->get('evo');
+        return app('evo');
     }
 }
 
 if (!function_exists('evo')) {
     /**
-     * @return Evo
+     * @return DocumentParser
      */
-    function evo()
+    function evo(): DocumentParser
     {
-        return app()->get('evo');
+        return app('evo');
     }
 }
 
@@ -29,7 +27,7 @@ if (!function_exists('data_is_json')) {
      *
      * @return bool|mixed
      */
-    function data_is_json($string, bool $returnData = false)
+    function data_is_json($string, bool $returnData = false): mixed
     {
         $json = json_decode($string, true);
         if (json_last_error() != JSON_ERROR_NONE) {
@@ -56,7 +54,7 @@ if (!function_exists('removeSanitizeSeed')) {
      */
     function removeSanitizeSeed(string $string = ''): string
     {
-        if (!$string || strpos($string, MODX_SANITIZE_SEED) === false) {
+        if (!$string || !str_contains($string, MODX_SANITIZE_SEED)) {
             return $string;
         }
 

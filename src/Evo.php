@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
-use PHPMailer\PHPMailer\Exception;
 use Team64j\LaravelEvolution\Legacy\Event;
 use Team64j\LaravelEvolution\Legacy\UrlProcessor;
 use Team64j\LaravelEvolution\Models\ActiveUser;
@@ -132,13 +131,13 @@ class Evo
      * @deprecated Needs for the newChunkie class by Thomas Jakobi
      * @var array
      */
-    public $chunkieCache = [];
+    public array $chunkieCache = [];
 
     /**
      * @deprecated Needs for the modxRTEbridge class
      * @var array
      */
-    public $modxRTEbridge = [];
+    public array $modxRTEbridge = [];
 
     /**
      * @var Legacy\DeprecatedCore
@@ -149,7 +148,7 @@ class Evo
     /**
      * @deprecated use UrlProcessor::getFacadeRoot()->documentListing
      */
-    public $documentListing = [];
+    public array $documentListing = [];
 
     /**
      * @deprecated use UrlProcessor::getFacadeRoot()->virtualDir
@@ -159,7 +158,7 @@ class Evo
     /**
      * @deprecated use UrlProcessor::getFacadeRoot()->aliasListing
      */
-    public $aliasListing = [];
+    public array $aliasListing = [];
 
     /**
      * @deprecated
@@ -167,7 +166,7 @@ class Evo
      */
     public array|false $_TVnames = false;
 
-    protected $evolutionProperty = [
+    protected array $evolutionProperty = [
         'db' => 'getDatabase',
     ];
 
@@ -228,19 +227,6 @@ class Evo
     final public function __clone()
     {
         //
-    }
-
-    /**
-     * @return self
-     * @throws \Exception
-     */
-    public static function getInstance()
-    {
-        if (self::$instance === null) {
-            self::$instance = new static();
-        }
-
-        return self::$instance;
     }
 
     public function get($name)
@@ -570,7 +556,7 @@ class Evo
      *
      * @return bool
      */
-    public function isLoggedIn($context = 'mgr')
+    public function isLoggedIn(string $context = 'mgr'): bool
     {
         $context = $context == 'mgr' ? 'mgr' : 'web';
         $_ = $context . 'Validated';
@@ -583,7 +569,7 @@ class Evo
      *
      * @return boolean
      */
-    public function checkSession()
+    public function checkSession(): bool
     {
         return $this->isLoggedin();
     }
@@ -593,7 +579,7 @@ class Evo
      *
      * @return boolean
      */
-    public function checkPreview()
+    public function checkPreview(): bool
     {
         return ($this->isLoggedIn() == true) && isset($_REQUEST['z']) && $_REQUEST['z'] === 'manprev';
     }
@@ -603,7 +589,7 @@ class Evo
      *
      * @return boolean
      */
-    public function checkSiteStatus()
+    public function checkSiteStatus(): bool
     {
         if ($this->getConfig('site_status')) {
             return true;
@@ -1867,7 +1853,6 @@ class Evo
      *
      * @return boolean Error detected
      */
-
     public function detectError($error)
     {
         $detected = false;
@@ -1892,10 +1877,6 @@ class Evo
      */
     public function evalPlugin($pluginCode, $params)
     {
-        ini_set('display_errors', '1');
-        ini_set('display_startup_errors', '1');
-        error_reporting(E_ALL);
-
         $modx = &$this;
         if (!is_object($modx->event)) {
             $modx->event = new \stdClass();
@@ -1980,7 +1961,7 @@ class Evo
         }
         ob_start();
         if (is_scalar($phpcode) && Str::contains($phpcode, ';')) {
-            if (substr($phpcode, 0, 5) === '<?php') {
+            if (str_starts_with($phpcode, '<?php')) {
                 $phpcode = substr($phpcode, 5);
             }
             $return = eval($phpcode);
@@ -2049,7 +2030,7 @@ class Evo
 
         foreach ($matches[1] as $i => $call) {
             $s = &$matches[0][$i];
-            if (substr($call, 0, 2) === '$_') {
+            if (str_starts_with($call, '$_')) {
                 if (!Str::contains($content, '_PHX_INTERNAL_')) {
                     $value = $this->_getSGVar($call);
                 } else {
@@ -6417,7 +6398,7 @@ class Evo
      *
      * @return array
      */
-    public function getUserSettings()
+    public function getUserSettings(): array
     {
         //$this->getDatabase();
         //if (!$this->getDatabase()->getDriver()->isConnected()) {
@@ -6437,11 +6418,15 @@ class Evo
             }
 
             if ($usrType === 'web') {
-                $usrSettings = Models\UserSetting::where('user', '=', $id)->get()
+                $usrSettings = Models\UserSetting::query()
+                    ->where('user', '=', $id)
+                    ->get()
                     ->pluck('setting_value', 'setting_name')
                     ->toArray();
             } else {
-                $usrSettings = Models\UserSetting::where('user', '=', $id)->get()
+                $usrSettings = Models\UserSetting::query()
+                    ->where('user', '=', $id)
+                    ->get()
                     ->pluck('setting_value', 'setting_name')
                     ->toArray();
             }
@@ -6456,8 +6441,11 @@ class Evo
                 $_SESSION[$usrType . 'UsrConfigSet'] = $usrSettings;
             } // store user settings in session
         }
+
         if ($this->isFrontend() && $mgrid = $this->getLoginUserID('mgr')) {
-            $musrSettings = Models\UserSetting::where('user', '=', $mgrid)->get()
+            $musrSettings = Models\UserSetting::query()
+                ->where('user', '=', $mgrid)
+                ->get()
                 ->pluck('setting_value', 'setting_name')
                 ->toArray();
 
@@ -6466,6 +6454,7 @@ class Evo
                 $usrSettings = array_merge($musrSettings, $usrSettings);
             }
         }
+
         // save global values before overwriting/merging array
         foreach ($usrSettings as $param => $value) {
             if ($this->getConfig($param) !== null) {
@@ -6474,10 +6463,12 @@ class Evo
         }
 
         $this->config = array_merge($this->config, $usrSettings);
+
         $this->setConfig(
             'filemanager_path',
             str_replace('[(base_path)]', MODX_BASE_PATH, $this->getConfig('filemanager_path'))
         );
+
         $this->setConfig(
             'rb_base_dir',
             str_replace('[(base_path)]', MODX_BASE_PATH, $this->getConfig('rb_base_dir'))
@@ -6489,20 +6480,25 @@ class Evo
     /**
      * @return string
      */
-    public function getSiteCacheFilePath()
+    public function getSiteCacheFilePath(): string
     {
         return $this->getSiteCachePath('siteCache.idx.php');
     }
 
     /**
+     * @param string $path
+     *
      * @return string
      */
-    public function getSiteCachePath($path = '')
+    public function getSiteCachePath(string $path = ''): string
     {
         return storage_path('framework/cache/data/' . $path);
     }
 
-    public function recoverySiteCache()
+    /**
+     * @return void
+     */
+    public function recoverySiteCache(): void
     {
         $siteCacheDir = $this->getSiteCachePath();
         $siteCachePath = $this->getSiteCacheFilePath();
@@ -6527,9 +6523,11 @@ class Evo
         if (Cache::has($siteCachePath)) {
             eval(Cache::get($siteCachePath));
         }
+
         if (!empty($this->config)) {
             return;
         }
+
         if (IN_INSTALL_MODE === false) {
             $this->config = Models\SystemSetting::all()
                 ->pluck('setting_value', 'setting_name')
@@ -6539,6 +6537,7 @@ class Evo
         if ($this->getConfig('enable_filter') === null) {
             return;
         }
+
         if (IN_INSTALL_MODE === false) {
             if (Models\SitePlugin::activePhx()->count() === 0) {
                 $this->setConfig('enable_filter', '0');
