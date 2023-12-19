@@ -16,6 +16,11 @@
     "php": ">=8.1"
   },
   "autoload": {
+    "files": [
+      "legacy/DocumentParser.php",
+      "legacy/DLTemplate.php",
+      "legacy/SystemEvent.php"
+    ],
     "psr-4": {
       "Team64j\\LaravelEvolution\\": "src"
     }

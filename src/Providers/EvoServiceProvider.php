@@ -20,8 +20,6 @@ class EvoServiceProvider extends ServiceProvider
     {
         $this->registerLegacy();
 
-        require __DIR__ . '/../legacy.inc.php';
-
         $this->app->singleton('evo', fn() => new \DocumentParser());
         $this->app->alias('evo', \DocumentParser::class);
     }
