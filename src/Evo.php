@@ -2523,8 +2523,7 @@ class Evo
             $documentObject = $out[0];
         } else {
             // get document
-            $documentObject = SiteContent::query()
-                ->withoutProtected()
+            $documentObject = SiteContent::withoutProtected()
                 ->where('site_content.' . $method, $identifier);
             $documentObject = $documentObject->first();
             if (is_null($documentObject)) {

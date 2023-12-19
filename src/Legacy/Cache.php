@@ -3,7 +3,13 @@
 namespace Team64j\LaravelEvolution\Legacy;
 
 use DocumentParser;
-use Team64j\LaravelEvolution\Models;
+use Team64j\LaravelEvolution\Models\SiteContent;
+use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
+use Team64j\LaravelEvolution\Models\SitePlugin;
+use Team64j\LaravelEvolution\Models\SiteSnippet;
+use Team64j\LaravelEvolution\Models\SystemEventname;
+use Team64j\LaravelEvolution\Models\SystemSetting;
+use Team64j\LaravelEvolution\Models\UserSetting;
 
 /**
  * @class: synccache
@@ -91,7 +97,7 @@ class Cache
     {
         // modx:returns child's parent
         if (empty($this->aliases)) {
-            $result = Models\SiteContent::query()
+            $result = SiteContent::query()
                 ->where('deleted', 0)
                 ->where('isfolder', 1)
                 ->get([
@@ -130,7 +136,7 @@ class Cache
     /**
      * @param null|DocumentParser $modx
      */
-    public function emptyCache($modx = null)
+    public function emptyCache($modx = null): void
     {
         if (!($modx instanceof Interfaces\CoreInterface)) {
             $modx = $GLOBALS['modx'];
@@ -139,7 +145,8 @@ class Cache
             $modx->getService('ExceptionHandler')->messageQuit("Cache path not set.");
         }
         \Illuminate\Support\Facades\Cache::flush();
-        Models\UserSetting::query()->whereIn('setting_name', ['password', 'password_confirmation', 'clearPassword'])
+        UserSetting::query()
+            ->whereIn('setting_name', ['password', 'password_confirmation', 'clearPassword'])
             ->delete();
         $files = glob(realpath($this->cachePath) . '/*.pageCache.php');
         $filesincache = count($files);
@@ -168,7 +175,7 @@ class Cache
         $this->publishTimeConfig();
 
         // finished cache stuff.
-        if ($this->showReport == true) {
+        if ($this->showReport) {
             global $_lang;
             $total = count($deletedfiles);
             echo sprintf($_lang['refresh_cache'], $filesincache, $total);
@@ -221,14 +228,14 @@ class Cache
         // update publish time file
         $timesArr = [];
 
-        $minpub = Models\SiteContent::query()
+        $minpub = SiteContent::query()
             ->where('pub_date', '>', $this->request_time)->min('pub_date');
 
         if ($minpub != null) {
             $timesArr[] = $minpub;
         }
 
-        $minpub = Models\SiteContent::query()
+        $minpub = SiteContent::query()
             ->where('unpub_date', '>', $this->request_time)->min('unpub_date');
 
         if ($minpub != null) {
@@ -255,7 +262,7 @@ class Cache
      *
      * @return boolean success
      */
-    public function buildCache($modx)
+    public function buildCache($modx): bool
     {
         //$content = "<?php\n";
         $content = '';
@@ -263,7 +270,7 @@ class Cache
         // SETTINGS & DOCUMENT LISTINGS CACHE
 
         // get settings
-        $systemSettings = Models\SystemSetting::all();
+        $systemSettings = SystemSetting::all();
         $config = [];
         $content .= '$c=&$this->config;';
         foreach ($systemSettings as $systemSetting) {
@@ -273,7 +280,7 @@ class Cache
         }
 
         if (isset($config['enable_filter']) && $config['enable_filter'] == 1) {
-            if (Models\SitePlugin::activePhx()->count()) {
+            if (SitePlugin::activePhx()->count()) {
                 $content .= '$this->config[\'enable_filter\']=\'0\';';
             }
         }
@@ -281,7 +288,7 @@ class Cache
         // enabled = 1, disabled = 0, only folders = 2
         if (!isset($config['alias_listing']) || $config['alias_listing'] != 0) {
             // WRITE Aliases to cache file
-            $result = Models\SiteContent::query()
+            $result = SiteContent::query()
                 ->where('deleted', 0)
                 ->when(
                     isset($config['alias_listing']) && $config['alias_listing'] == 2,
@@ -327,7 +334,7 @@ class Cache
 
         if (!isset($config['disable_chunk_cache']) || $config['disable_chunk_cache'] != 1) {
             // WRITE Chunks to cache file
-            $chunks = Models\SiteHtmlsnippet::all();
+            $chunks = SiteHtmlsnippet::all();
             $content .= '$c=&$this->chunkCache;';
             foreach ($chunks->toArray() as $doc) {
                 $content .= '$c[\'' . $doc['name'] . '\']=\'' .
@@ -337,7 +344,7 @@ class Cache
 
         if (!isset($config['disable_snippet_cache']) || $config['disable_snippet_cache'] != 1) {
             // WRITE snippets to cache file
-            $snippets = Models\SiteSnippet::query()
+            $snippets = SiteSnippet::query()
                 ->select('site_snippets.*', 'site_modules.properties as sharedproperties')
                 ->leftJoin('site_modules', 'site_snippets.moduleguid', '=', 'site_modules.guid')
                 ->get();
@@ -364,7 +371,7 @@ class Cache
 
         if (!isset($config['disable_plugins_cache']) || $config['disable_plugins_cache'] != 1) {
             // WRITE plugins to cache file
-            $plugins = Models\SitePlugin::query()
+            $plugins = SitePlugin::query()
                 ->select('site_plugins.*', 'site_modules.properties as sharedproperties')
                 ->leftJoin('site_modules', 'site_plugins.moduleguid', '=', 'site_modules.guid')
                 ->where('site_plugins.disabled', 0)
@@ -390,7 +397,7 @@ class Cache
 
         if (true) { // system events
             // WRITE system event triggers
-            $systemEvents = Models\SystemEventname::query()
+            $systemEvents = SystemEventname::query()
                 ->select(
                     'system_eventnames.name as evtname',
                     'site_plugin_events.pluginid',
