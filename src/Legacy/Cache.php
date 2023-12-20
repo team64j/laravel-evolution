@@ -291,7 +291,7 @@ class Cache
         $content .= '$c=&$this->config;';
         foreach ($systemSettings as $systemSetting) {
             $content .= '$c[\'' . $systemSetting->setting_name . '\']="' .
-                $this->escapeDoubleQuotes($systemSetting->setting_value) . '";';
+                $this->escapeDoubleQuotes((string) $systemSetting->setting_value) . '";';
             $config[$systemSetting->setting_name] = $systemSetting->setting_value;
         }
 

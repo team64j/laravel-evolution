@@ -62,7 +62,7 @@ class EvoServiceProvider extends ServiceProvider
             return;
         }
 
-        Route::any('{any}', EvoController::class)
+        Route::match(['get', 'post', 'path', 'delete'], '{any}', EvoController::class)
             ->middleware('web')
             ->where('any', '.*');
     }
