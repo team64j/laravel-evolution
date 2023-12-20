@@ -909,8 +909,6 @@ class Evo
             );
             echo $this->pluginsCode;
         }
-
-        ob_end_flush();
     }
 
     /**
