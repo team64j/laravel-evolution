@@ -2,16 +2,16 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
-use Illuminate\Support\Facades\Request;
+use DocumentParser;
+use Illuminate\Support\Str;
 use Team64j\LaravelEvolution\Interfaces;
 use Team64j\LaravelEvolution\Legacy;
 use Team64j\LaravelEvolution\Models;
-use Illuminate\Support\Str;
 
 class UrlProcessor
 {
     /**
-     * @var Interfaces\CoreInterface
+     * @var DocumentParser
      */
     protected $core;
 

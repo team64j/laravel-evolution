@@ -2,7 +2,6 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
-use DocumentParser;
 use Team64j\LaravelEvolution\Models\SiteContent;
 use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
 use Team64j\LaravelEvolution\Models\SitePlugin;
@@ -16,36 +15,53 @@ use Team64j\LaravelEvolution\Models\UserSetting;
  */
 class Cache
 {
-    public $cachePath;
-    public $showReport;
-    public $deletedfiles = [];
     /**
-     * @var array
+     * @var string
      */
-    public $aliases = [];
-    /**
-     * @var array
-     */
-    public $parents = [];
-    /**
-     * @var array
-     */
-    public $aliasVisible = [];
-    public $request_time;
-    public $cacheRefreshTime;
+    public string $cachePath;
 
     /**
-     * synccache constructor.
+     * @var bool
+     */
+    public bool $showReport;
+
+    /**
+     * @var array
+     */
+    public array $aliases = [];
+
+    /**
+     * @var array
+     */
+    public array $parents = [];
+
+    /**
+     * @var array
+     */
+    public array $aliasVisible = [];
+
+    /**
+     * @var int
+     */
+    public mixed $request_time;
+
+    /**
+     * @var int
+     */
+    public int $cacheRefreshTime;
+
+    /**
+     * sync cache constructor.
      */
     public function __construct()
     {
-        $this->request_time = $_SERVER['REQUEST_TIME'] + evolutionCMS()->getConfig('server_offset_time');
+        $this->request_time = $_SERVER['REQUEST_TIME'] + evo()->getConfig('server_offset_time');
     }
 
     /**
      * @param string $path
      */
-    public function setCachepath($path)
+    public function setCachePath(string $path): void
     {
         $this->cachePath = $path;
     }
@@ -53,21 +69,22 @@ class Cache
     /**
      * @param bool $bool
      */
-    public function setReport($bool)
+    public function setReport(bool $bool): void
     {
         $this->showReport = $bool;
     }
 
     /**
-     * @param string $s
+     * @param array|string $s
      *
-     * @return string
+     * @return array|string
      */
-    public function escapeSingleQuotes($s)
+    public function escapeSingleQuotes(array|string $s): array|string
     {
         if ($s === '') {
             return $s;
         }
+
         $q1 = ["\\", "'"];
         $q2 = ["\\\\", "\\'"];
 
@@ -75,16 +92,16 @@ class Cache
     }
 
     /**
-     * @param string $s
+     * @param array|string $s
      *
-     * @return string
+     * @return array|string
      */
-    public function escapeDoubleQuotes($s)
+    public function escapeDoubleQuotes(array|string $s): array|string
     {
         $q1 = ["\\", "\"", "\r", "\n", "\$"];
         $q2 = ["\\\\", "\\\"", "\\r", "\\n", "\\$"];
 
-        return str_replace($q1, $q2, (string) $s);
+        return str_replace($q1, $q2, $s);
     }
 
     /**
@@ -93,7 +110,7 @@ class Cache
      *
      * @return string
      */
-    public function getParents($id, $path = '')
+    public function getParents(int|string $id, string $path = ''): string
     {
         // modx:returns child's parent
         if (empty($this->aliases)) {
@@ -134,17 +151,16 @@ class Cache
     }
 
     /**
-     * @param null|DocumentParser $modx
+     * @return void
      */
-    public function emptyCache($modx = null): void
+    public function emptyCache(): void
     {
-        if (!($modx instanceof Interfaces\CoreInterface)) {
-            $modx = $GLOBALS['modx'];
-        }
         if (!isset($this->cachePath)) {
-            $modx->getService('ExceptionHandler')->messageQuit("Cache path not set.");
+            evo()->getService('ExceptionHandler')->messageQuit("Cache path not set.");
         }
+
         \Illuminate\Support\Facades\Cache::flush();
+
         UserSetting::query()
             ->whereIn('setting_name', ['password', 'password_confirmation', 'clearPassword'])
             ->delete();
@@ -170,7 +186,7 @@ class Cache
             }
         }
 
-        $this->buildCache($modx);
+        $this->buildCache();
 
         $this->publishTimeConfig();
 
@@ -193,9 +209,9 @@ class Cache
     }
 
     /**
-     * @param string|int $cacheRefreshTime
+     * @param int|string $cacheRefreshTime
      */
-    public function publishTimeConfig($cacheRefreshTime = '')
+    public function publishTimeConfig(int|string $cacheRefreshTime = ''): void
     {
         $cacheRefreshTimeFromDB = $this->getCacheRefreshTime();
         if (!preg_match('@^[0-9]+$]@', $cacheRefreshTime) || $cacheRefreshTimeFromDB < $cacheRefreshTime) {
@@ -207,9 +223,9 @@ class Cache
         $content .= '$recent_update=\'' . $this->request_time . '\';' . "\n";
         $content .= '$cacheRefreshTime=\'' . $cacheRefreshTime . '\';' . "\n";
 
-        $filename = evolutionCMS()->getSitePublishingFilePath();
+        $filename = evo()->getSitePublishingFilePath();
         if (!$handle = fopen($filename, 'w')) {
-            exit("Cannot open file ({$filename}");
+            exit("Cannot open file ($filename");
         }
 
         $content .= "\n";
@@ -223,7 +239,7 @@ class Cache
     /**
      * @return int
      */
-    public function getCacheRefreshTime()
+    public function getCacheRefreshTime(): int
     {
         // update publish time file
         $timesArr = [];
@@ -258,12 +274,12 @@ class Cache
     /**
      * build siteCache file
      *
-     * @param DocumentParser $modx
-     *
      * @return boolean success
      */
-    public function buildCache($modx): bool
+    public function buildCache(): bool
     {
+        $modx = evo();
+
         //$content = "<?php\n";
         $content = '';
 

@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Team64j\LaravelEvolution\Http\Controllers\EvoController;
 use Team64j\LaravelEvolution\Legacy;
-use Team64j\LaravelEvolution\Models\SystemSetting;
 
 class EvoServiceProvider extends ServiceProvider
 {
@@ -18,10 +17,9 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->registerLegacy();
-
         $this->app->singleton('evo', fn() => new \DocumentParser());
         $this->app->alias('evo', \DocumentParser::class);
+        $this->registerLegacy();
     }
 
     /**
@@ -76,15 +74,6 @@ class EvoServiceProvider extends ServiceProvider
     {
         if (!$this->app->configurationIsCached()) {
             Config::set('database.connections.' . Config::get('database.default') . '.prefix', env('DB_PREFIX', ''));
-        }
-
-        if (!Config::has('global')) {
-            Config::set(
-                'global',
-                SystemSetting::query()
-                    ->pluck('setting_value', 'setting_name')
-                    ->toArray()
-            );
         }
     }
 }

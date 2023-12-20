@@ -2,8 +2,11 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
-use EvolutionCMS\Legacy\Phx;
+use DocumentParser;
+use Exception;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\View\Factory;
 use Illuminate\View\FileViewFinder;
 use Team64j\LaravelEvolution\Models;
 use Team64j\LaravelEvolution\Models\SiteTemplate;
@@ -13,9 +16,7 @@ use Team64j\LaravelEvolution\Models\SiteTemplate;
 class Parser
 {
     /**
-     * Объект Core - основной класс MODX
-     *
-     * @var Core $core
+     * @var DocumentParser $core
      * @access protected
      */
     protected $core;
@@ -30,7 +31,7 @@ class Parser
     protected $templateExtension = 'html';
 
     /**
-     * @var \Illuminate\View\Factory
+     * @var Factory
      */
     public $blade;
 
@@ -479,17 +480,21 @@ class Parser
     {
         try {
             $this->blade = clone app('view');
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $this->core->messageQuit($exception->getMessage());
         }
     }
 
-    public function getBlade()
+    /**
+     * @return Factory
+     * @throws Exception
+     */
+    public function getBlade(): Factory
     {
         if ($this->blade) {
             return $this->blade;
         } else {
-            throw new \Exception('Blade is not initialized');
+            throw new Exception('Blade is not initialized');
         }
     }
 
@@ -578,6 +583,9 @@ class Parser
         return $out;
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function getBladeDocumentContent()
     {
         $template = false;
@@ -588,7 +596,10 @@ class Parser
             if ($doc['template'] === 0) {
                 $templateAlias = '_blank';
             } else {
-                $templateAlias = SiteTemplate::query()->select('templatealias')->find($doc['template'])->templatealias;
+                $templateAlias = SiteTemplate::query()
+                    ->select('templatealias')
+                    ->find($doc['template'])
+                    ->templatealias;
             }
         }
 
@@ -657,7 +668,7 @@ class Parser
      */
     public function getTemplateCodeFromDB($templateID)
     {
-        return SiteTemplate::findOrFail($templateID)->content;
+        return SiteTemplate::query()->findOrFail($templateID)->value('content');
     }
 
     /**

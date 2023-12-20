@@ -7,6 +7,7 @@ use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
+use PDOStatement;
 
 class Database extends Manager
 {
@@ -87,7 +88,7 @@ class Database extends Manager
             return $out;
         } catch (Exception $exception) {
             if ($watchError === true) {
-                evolutionCMS()->getService('ExceptionHandler')->messageQuit(
+                evo()->getService('ExceptionHandler')->messageQuit(
                     e($exception->getMessage()) . '<br><br>' . e($sql)
                 );
             }
@@ -494,7 +495,7 @@ class Database extends Manager
     {
         $out = false;
         if (!$from) {
-            evolutionCMS()->getService('ExceptionHandler')->messageQuit("Empty \$from parameters in DBAPI::delete().");
+            evo()->getService('ExceptionHandler')->messageQuit("Empty \$from parameters in DBAPI::delete().");
         } else {
             $from = $this->replaceFullTableName($from);
             $where = trim($where);
@@ -569,9 +570,9 @@ class Database extends Manager
     }
 
     /**
-     * @param \PDOStatement $rs
+     * @param PDOStatement $rs
      *
-     * @return mixed
+     * @return int
      */
     public function numFields($rs)
     {
@@ -579,7 +580,7 @@ class Database extends Manager
     }
 
     /**
-     * @param \PDOStatement $rs
+     * @param PDOStatement $rs
      * @param int $col
      *
      * @return string|null
@@ -591,6 +592,11 @@ class Database extends Manager
         return $meta['name'] ?? null;
     }
 
+    /**
+     * @param $conn
+     *
+     * @return int
+     */
     public function getInsertId($conn = null)
     {
         if (!($conn instanceof PDOStatement)) {
@@ -614,7 +620,7 @@ class Database extends Manager
     {
         $out = false;
         if (!$intotable) {
-            evolutionCMS()->getService('ExceptionHandler')->messageQuit(
+            evo()->getService('ExceptionHandler')->messageQuit(
                 "Empty \$intotable parameters in DBAPI::insert()."
             );
         } else {
@@ -655,7 +661,7 @@ class Database extends Manager
                 }
             }
             if (($lid = $this->getInsertId()) === false) {
-                evolutionCMS()->getService('ExceptionHandler')->messageQuit("Couldn't get last insert key!");
+                evo()->getService('ExceptionHandler')->messageQuit("Couldn't get last insert key!");
             }
 
             $out = $lid;
@@ -685,7 +691,7 @@ class Database extends Manager
     {
         $out = false;
         if (!$table) {
-            evolutionCMS()->getService('ExceptionHandler')->messageQuit(
+            evo()->getService('ExceptionHandler')->messageQuit(
                 'Empty ' . $table . ' parameter in DBAPI::update().'
             );
         } else {
@@ -728,7 +734,7 @@ class Database extends Manager
     {
         $metadata = [];
         if (!empty($table) && is_scalar($table)) {
-            switch (EvolutionCMS()->getDatabase()->getConfig('driver')) {
+            switch (evo()->getDatabase()->getConfig('driver')) {
                 case 'pgsql':
                     $sql = " SELECT * FROM information_schema.columns WHERE table_name = '" . $table . "';";
                     break;
@@ -738,7 +744,7 @@ class Database extends Manager
             }
             if ($ds = $this->query($sql)) {
                 while ($row = $this->getRow($ds)) {
-                    switch (EvolutionCMS()->getDatabase()->getConfig('driver')) {
+                    switch (evo()->getDatabase()->getConfig('driver')) {
                         case 'pgsql':
                             $fieldName = $row['column_name'];
                             break;

@@ -11,7 +11,7 @@ class DeprecatedCore
      */
     public function dbConnect()
     {
-        $modx = evolutionCMS();
+        $modx = evo();
         $modx->getDatabase()->connect();
         $modx->rs = $modx->getDatabase()->conn;
     }
@@ -25,9 +25,7 @@ class DeprecatedCore
      */
     public function dbQuery($sql)
     {
-        $modx = evolutionCMS();
-
-        return $modx->getDatabase()->query($sql);
+        return evo()->getDatabase()->query($sql);
     }
 
     /**
@@ -39,9 +37,7 @@ class DeprecatedCore
      */
     public function recordCount($rs)
     {
-        $modx = evolutionCMS();
-
-        return $modx->getDatabase()->getRecordCount($rs);
+        return evo()->getDatabase()->getRecordCount($rs);
     }
 
     /**
@@ -54,9 +50,7 @@ class DeprecatedCore
      */
     public function fetchRow($rs, $mode = 'assoc')
     {
-        $modx = evolutionCMS();
-
-        return $modx->getDatabase()->getRow($rs, $mode);
+        return evo()->getDatabase()->getRow($rs, $mode);
     }
 
     /**
@@ -68,9 +62,7 @@ class DeprecatedCore
      */
     public function affectedRows($rs)
     {
-        $modx = evolutionCMS();
-
-        return $modx->getDatabase()->getAffectedRows($rs);
+        return evo()->getDatabase()->getAffectedRows($rs);
     }
 
     /**
@@ -78,86 +70,82 @@ class DeprecatedCore
      *
      * @return int|mixed
      * @deprecated
-     *
      */
-    public function insertId($rs)
+    public function insertId($rs): mixed
     {
-        $modx = evolutionCMS();
-
-        return $modx->getDatabase()->getInsertId($rs);
+        return evo()->getDatabase()->getInsertId($rs);
     }
 
     /**
      * @return void
      * @deprecated
-     *
      */
-    public function dbClose()
+    public function dbClose(): void
     {
-        $modx = evolutionCMS();
-        $modx->getDatabase()->disconnect();
+        evo()->getDatabase()->disconnect();
     }
 
     /**
-     * @param array $array
-     * @param string $ulroot
-     * @param string $ulprefix
+     * @param array|string $array $array
+     * @param string $root
+     * @param string $prefix
      * @param string $type
      * @param bool $ordered
-     * @param int $tablevel
+     * @param int $level
      *
      * @return string
      * @deprecated
-     *
      */
-    public function makeList($array, $ulroot = 'root', $ulprefix = 'sub_', $type = '', $ordered = false, $tablevel = 0)
+    public function makeList(
+        array|string $array,
+        string $root = 'root',
+        string $prefix = 'sub_',
+        string $type = '',
+        bool $ordered = false,
+        int $level = 0): string
     {
         // first find out whether the value passed is an array
         if (!is_array($array)) {
-            return "<ul><li>Bad list</li></ul>";
+            return '<ul><li>Bad list</li></ul>';
         }
+
         if (!empty ($type)) {
-            $typestr = " style='list-style-type: $type'";
+            $attrs = " style='list-style-type: $type'";
         } else {
-            $typestr = "";
+            $attrs = '';
         }
-        $tabs = "";
-        for ($i = 0; $i < $tablevel; $i++) {
-            $tabs .= "\t";
-        }
-        $listhtml =
-            $ordered == true ? $tabs . "<ol class='$ulroot'$typestr>\n" : $tabs . "<ul class='$ulroot'$typestr>\n";
+
+        $tabs = str_repeat("\t", $level);
+        $html = $ordered ? $tabs . "<ol class='$root'$attrs>\n" : $tabs . "<ul class='$root'$attrs>\n";
         foreach ($array as $key => $value) {
             if (is_array($value)) {
-                $listhtml .= $tabs . "\t<li>" . $key . "\n" . $this->makeList(
+                $html .= $tabs . "\t<li>" . $key . "\n" . $this->makeList(
                         $value,
-                        $ulprefix . $ulroot,
-                        $ulprefix,
+                        $prefix . $root,
+                        $prefix,
                         $type,
                         $ordered,
-                        $tablevel + 2
+                        $level + 2
                     ) . $tabs . "\t</li>\n";
             } else {
-                $listhtml .= $tabs . "\t<li>" . $value . "</li>\n";
+                $html .= $tabs . "\t<li>" . $value . "</li>\n";
             }
         }
-        $listhtml .= $ordered == true ? $tabs . "</ol>\n" : $tabs . "</ul>\n";
+        $html .= $ordered ? $tabs . "</ol>\n" : $tabs . "</ul>\n";
 
-        return $listhtml;
+        return $html;
     }
 
     /**
      * @return array
      * @deprecated
-     *
      */
-    public function getUserData()
+    public function getUserData(): array
     {
-        $client = [];
-        $client['ip'] = $_SERVER['REMOTE_ADDR'];
-        $client['ua'] = $_SERVER['HTTP_USER_AGENT'];
-
-        return $client;
+        return [
+            'ip' => $_SERVER['REMOTE_ADDR'],
+            'ua' => $_SERVER['HTTP_USER_AGENT'],
+        ];
     }
 
     /**
@@ -165,9 +153,8 @@ class DeprecatedCore
      *
      * @return bool|string
      * @deprecated
-     *
      */
-    public function insideManager()
+    public function insideManager(): bool|string
     {
         $m = false;
         if (defined('IN_MANAGER_MODE') && IN_MANAGER_MODE === true) {
@@ -189,25 +176,19 @@ class DeprecatedCore
      *
      * @return bool|string
      * @deprecated
-     *
      */
-    public function putChunk($chunkName)
-    { // alias name >.<
-        $modx = evolutionCMS();
-
-        return $modx->getChunk($chunkName);
+    public function putChunk($chunkName): bool|string
+    {
+        return evo()->getChunk($chunkName);
     }
 
     /**
      * @return array|string
      * @deprecated
-     *
      */
-    public function getDocGroups()
+    public function getDocGroups(): array|string
     {
-        $modx = evolutionCMS();
-
-        return $modx->getUserDocGroups();
+        return evo()->getUserDocGroups();
     }
 
     /**
@@ -216,41 +197,38 @@ class DeprecatedCore
      *
      * @return bool|string
      * @deprecated
-     *
      */
-    public function changePassword($o, $n)
+    public function changePassword(string $o, string $n): bool|string
     {
-        $modx = evolutionCMS();
-
-        return $modx->changeWebUserPassword($o, $n);
+        return evo()->changeWebUserPassword($o, $n);
     }
 
     /**
      * @return array|bool
      * @deprecated
-     *
      */
-    public function userLoggedIn()
+    public function userLoggedIn(): bool|array
     {
-        $modx = evolutionCMS();
-        $userdetails = [];
+        $modx = evo();
+        $data = [];
+
         if ($modx->isFrontend() && isset ($_SESSION['webValidated'])) {
             // web user
-            $userdetails['loggedIn'] = true;
-            $userdetails['id'] = $_SESSION['webInternalKey'];
-            $userdetails['username'] = $_SESSION['webShortname'];
-            $userdetails['usertype'] = 'web'; // added by Raymond
+            $data['loggedIn'] = true;
+            $data['id'] = $_SESSION['webInternalKey'];
+            $data['username'] = $_SESSION['webShortname'];
+            $data['usertype'] = 'web'; // added by Raymond
 
-            return $userdetails;
+            return $data;
         } else {
             if ($modx->isBackend() && isset ($_SESSION['mgrValidated'])) {
                 // manager user
-                $userdetails['loggedIn'] = true;
-                $userdetails['id'] = $_SESSION['mgrInternalKey'];
-                $userdetails['username'] = $_SESSION['mgrShortname'];
-                $userdetails['usertype'] = 'manager'; // added by Raymond
+                $data['loggedIn'] = true;
+                $data['id'] = $_SESSION['mgrInternalKey'];
+                $data['username'] = $_SESSION['mgrShortname'];
+                $data['usertype'] = 'manager'; // added by Raymond
 
-                return $userdetails;
+                return $data;
             } else {
                 return false;
             }
@@ -261,31 +239,34 @@ class DeprecatedCore
      * @param string $method
      * @param string $prefix
      * @param string $trim
-     * @param $REQUEST_METHOD
+     * @param string $REQUEST_METHOD
      *
      * @return array|bool
      * @deprecated
-     *
      */
-    public function getFormVars($method = "", $prefix = "", $trim = "", $REQUEST_METHOD = 'GET')
+    public function getFormVars(
+        string $method = '',
+        string $prefix = '',
+        string $trim = '',
+        string $REQUEST_METHOD = 'GET'): bool|array
     {
-        //  function to retrieve form results into an associative array
-        $modx = evolutionCMS();
         $results = [];
         $method = strtoupper($method);
-        if ($method == "") {
+        if ($method == '') {
             $method = $REQUEST_METHOD;
         }
-        if ($method == "POST") {
+        if ($method == 'POST') {
             $method = &$_POST;
-        } elseif ($method == "GET") {
+        } elseif ($method == 'GET') {
             $method = &$_GET;
         } else {
             return false;
         }
+
         reset($method);
+
         foreach ($method as $key => $value) {
-            if (($prefix != "") && (substr($key, 0, strlen($prefix)) == $prefix)) {
+            if (($prefix != '') && (substr($key, 0, strlen($prefix)) == $prefix)) {
                 if ($trim) {
                     $pieces = explode($prefix, $key, 2);
                     $key = $pieces[1];
@@ -293,7 +274,7 @@ class DeprecatedCore
                 } else {
                     $results[$key] = $value;
                 }
-            } elseif ($prefix == "") {
+            } elseif ($prefix == '') {
                 $results[$key] = $value;
             }
         }
@@ -308,17 +289,17 @@ class DeprecatedCore
      * @param string $url URL to redirect to
      *
      * @deprecated
-     *
      */
-    public function webAlert($msg, $url = "")
+    public function webAlert(string $msg, string $url = '')
     {
-        $modx = evolutionCMS();
+        $modx = evo();
         $msg = addslashes($modx->getDatabase()->escape($msg));
-        if (substr(strtolower($url), 0, 11) == "javascript:") {
-            $act = "__WebAlert();";
-            $fnc = "function __WebAlert(){" . substr($url, 11) . "};";
+
+        if (str_starts_with(strtolower($url), 'javascript:')) {
+            $act = '__WebAlert();';
+            $fnc = 'function __WebAlert(){' . substr($url, 11) . '};';
         } else {
-            $act = ($url ? "window.location.href='" . addslashes($url) . "';" : "");
+            $act = ($url ? "window.location.href='" . addslashes($url) . "';" : '');
         }
         $html = "<script>$fnc window.setTimeout(\"alert('$msg');$act\",100);</script>";
         if ($modx->isFrontend()) {
@@ -327,8 +308,4 @@ class DeprecatedCore
             echo $html;
         }
     }
-
-    ########################################
-    // END New database functions - rad14701
-    ########################################
 }

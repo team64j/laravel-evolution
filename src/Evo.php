@@ -6,6 +6,7 @@ namespace Team64j\LaravelEvolution;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -194,12 +195,13 @@ class Evo
          * @TODO: This is dirty code. Any ideas?
          */
         $this->saveConfig = $this->config;
+        $this->config = $this->configCompatibility();
 //        $this->booting(function () {
 //            $this->config = $this->configCompatibility();
 //        });
         //parent::__construct();
-
-        //$this->initialize();
+//
+//        $this->initialize();
     }
 
     /**
@@ -4385,7 +4387,7 @@ class Evo
         /*$this['command.view.clear']->handle();*/
         $path = $this['config']['view.compiled'];
         if ($path) {
-            foreach ($this['files']->glob("{$path}/*") as $view) {
+            foreach ($this['files']->glob("$path/*") as $view) {
                 $this['files']->delete($view);
             }
         }
@@ -4396,7 +4398,7 @@ class Evo
             }
         } elseif ($type === 'full') {
             $sync = new Legacy\Cache();
-            $sync->setCachepath($cache_dir);
+            $sync->setCachePath($cache_dir);
             $sync->setReport($report);
             $sync->emptyCache();
         } elseif (preg_match('@^[1-9]\d*$@', $type)) {
@@ -4415,7 +4417,7 @@ class Evo
             $files = glob($cache_dir . '*');
             foreach ($files as $file) {
                 $name = basename($file);
-                if (strpos($name, '.pageCache.php') === false) {
+                if (!str_contains($name, '.pageCache.php')) {
                     continue;
                 }
                 if (!is_file($file)) {
@@ -6511,11 +6513,11 @@ class Evo
         }
 
         $cache = new Legacy\Cache();
-        $cache->setCachepath($siteCacheDir);
+        $cache->setCachePath($siteCacheDir);
         $cache->setReport(false);
 
         if (IN_INSTALL_MODE === false) {
-            $cache->buildCache($this);
+            $cache->buildCache();
         }
 
         clearstatcache();
@@ -6946,9 +6948,9 @@ class Evo
     }
 
     /**
-     * @return mixed
+     * @return Legacy\DeprecatedCore
      */
-    public function getDeprecatedCore()
+    public function getDeprecatedCore(): Legacy\DeprecatedCore
     {
         return app('evo.deprecated');
     }
