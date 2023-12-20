@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
+use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
@@ -172,11 +172,11 @@ class Evo
     ];
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct()
     {
-        $this->tstart = $_SERVER['REQUEST_TIME_FLOAT'] ?? 0;
+//        $this->tstart = $_SERVER['REQUEST_TIME_FLOAT'] ?? 0;
 //        app()->instance('path', $this->path());
 //        app()->instance('path.base', $this->basePath());
 //        app()->instance('path.lang', $this->langPath());
@@ -194,8 +194,8 @@ class Evo
          *
          * @TODO: This is dirty code. Any ideas?
          */
-        $this->saveConfig = $this->config;
-        $this->config = $this->configCompatibility();
+//        $this->saveConfig = $this->config;
+//        $this->config = $this->configCompatibility();
 //        $this->booting(function () {
 //            $this->config = $this->configCompatibility();
 //        });
@@ -209,19 +209,22 @@ class Evo
      */
     public function initialize(): void
     {
-        if ($this->isLoggedIn()) {
-            ini_set('display_errors', 1);
-        }
+        $this->saveConfig = $this->config;
+        $this->config = $this->configCompatibility();
+
         // events
         $this->event = new Legacy\Event();
         $this->Event = &$this->event; // alias for backward compatibility
         $this->time = $_SERVER['REQUEST_TIME']; // for having global timestamp
 
         //$this->getService('ExceptionHandler');
+
         $this->checkAuth();
         $this->getSettings();
         $this->q = Request::getPathInfo();
-//        $routes = $this->router->getRoutes();
+
+//        /** @var \Illuminate\Routing\RouteCollection $routes */
+//        $routes = app('router')->getRoutes();
 //        $routes->refreshNameLookups();
 //        $routes->refreshActionLookups();
     }
@@ -243,7 +246,7 @@ class Evo
      *
      * @return mixed|null
      */
-    public function __get($name)
+    public function __get(string $name)
     {
         if ($this->hasEvolutionProperty($name)) {
             if ($this->getConfig('error_reporting') > 99) {
@@ -406,7 +409,7 @@ class Evo
      * @param string $responseCode
      *
      * @return null|false
-     * @throws \Exception
+     * @throws Exception
      */
     public function sendRedirect($url, $count_attempts = 0, $type = 'REDIRECT_HEADER', $responseCode = '')
     {
@@ -415,7 +418,7 @@ class Evo
         }
 
         if (Str::contains($url, "\n")) {
-            throw new \Exception('No newline allowed in redirect url.');
+            throw new Exception('No newline allowed in redirect url.');
         }
 
         if ($count_attempts) {
@@ -2764,8 +2767,6 @@ class Evo
 
         $this->initialize();
 
-        error_reporting(0);
-
         $this->_IIS_furl_fix(); // IIS friendly url fix
 
         // check site settings
@@ -3645,7 +3646,7 @@ class Evo
                     'lasthit' => $this->time,
                     'ip' => $_SESSION['ip'],
                 ]);
-            } catch (\Exception $exception) {
+            } catch (Exception $exception) {
                 //
             }
         }
@@ -6182,7 +6183,7 @@ class Evo
                         $out[$name] = "return require '" . $item->getRealPath() . "';";
                         break;
                     default:
-                        throw new \Exception;
+                        throw new Exception;
                 }
             }
         }

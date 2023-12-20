@@ -13,6 +13,6 @@ class EvoController extends Controller
      */
     public function __invoke()
     {
-        return app('evo')->executeParser();
+        return evo()->executeParser();
     }
 }
