@@ -280,8 +280,8 @@ class Cache
     {
         $modx = evo();
 
-        //$content = "<?php\n";
-        $content = '';
+        $content = "<?php\n";
+        //$content = '';
 
         // SETTINGS & DOCUMENT LISTINGS CACHE
 
@@ -448,10 +448,10 @@ class Cache
         // invoke OnBeforeCacheUpdate event
         $modx->invokeEvent('OnBeforeCacheUpdate');
 
-        \Illuminate\Support\Facades\Cache::forever($filename, $content);
-//        if (@file_put_contents($filename, $content) === false) {
-//            exit("Cannot write $filename! Make sure file or its directory is writable!");
-//        }
+//        \Illuminate\Support\Facades\Cache::forever($filename, $content);
+        if (@file_put_contents($filename, $content) === false) {
+            exit("Cannot write $filename! Make sure file or its directory is writable!");
+        }
 
         if (is_dir(MODX_BASE_PATH . '/assets/cache') && !is_file(MODX_BASE_PATH . '/assets/cache/.htaccess')) {
             file_put_contents(
