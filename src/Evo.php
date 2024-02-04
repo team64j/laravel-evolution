@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
-use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -12,7 +11,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
-use RuntimeException;
 use stdClass;
 use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
 use Team64j\LaravelEvolution\Legacy\Event;
@@ -98,6 +96,17 @@ class Evo
      * @deprecated
      */
     public Event $Event;
+
+    public function __construct()
+    {
+        app()->singleton('evo.url', fn() => new Legacy\UrlProcessor());
+        app()->singleton('evo.tpl', fn() => new Legacy\Parser());
+        app()->singleton('evo.db', fn() => new Legacy\Database());
+        app()->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
+        app()->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
+
+        $this->initialize();
+    }
 
     /**
      * @param $name
@@ -218,13 +227,39 @@ class Evo
     /**
      * @return string
      */
+    public function getSiteCacheFilePath(): string
+    {
+        return $this->getSiteCachePath('siteCache.idx.php');
+    }
+
+    /**
+     * @param $key
+     *
+     * @return string
+     */
+    public function getHashFile($key): string
+    {
+        return $this->getSiteCachePath('docid_' . $key . '.pageCache.php');
+    }
+
+    /**
+     * @param string $path
+     *
+     * @return string
+     */
+    public function getSiteCachePath(string $path = ''): string
+    {
+        return storage_path('framework/cache/data/' . $path);
+    }
+
+    /**
+     * @return string
+     */
     public function executeParser(): string
     {
         if (app()->runningInConsole()) {
             abort(500, 'Call DocumentParser::executeParser on CLI mode');
         }
-
-        $this->initialize();
 
         $this->_IIS_furl_fix(); // IIS friendly url fix
 
@@ -450,12 +485,15 @@ class Evo
         if (app()->runningInConsole() && defined('EVO_CLI_USER')) {
             return EVO_CLI_USER;
         }
+
         $out = false;
+
         if (empty($context)) {
             $context = $this->getContext();
         }
-        if (isset($_SESSION[$context . 'Validated'])) {
-            $out = $_SESSION[$context . 'InternalKey'];
+
+        if (Session::has($context . 'Validated')) {
+            $out = Session::get($context . 'Validated');
         }
 
         return $out;
@@ -605,7 +643,8 @@ class Evo
         if (empty($context)) {
             $context = $this->getContext();
         }
-        if (isset($_SESSION[$context . 'Role']) && $_SESSION[$context . 'Role'] == 1) {
+
+        if (Session::get($context . 'Role') && Session::get($context . 'Role') == 1) {
             return true;
         }
 
@@ -1307,7 +1346,7 @@ class Evo
 
         $cache_path = $this->getHashFile($key);
 
-        if (!is_file($cache_path)) {
+        if (!Cache::has($cache_path)) {
             $this->documentGenerated = 1;
 
             return '';
@@ -1382,26 +1421,6 @@ class Evo
     }
 
     /**
-     * @param $key
-     *
-     * @return string
-     */
-    public function getHashFile($key): string
-    {
-        return $this->getSiteCachePath('docid_' . $key . '.pageCache.php');
-    }
-
-    /**
-     * @param string $path
-     *
-     * @return string
-     */
-    public function getSiteCachePath(string $path = ''): string
-    {
-        return storage_path('framework/cache/data/' . $path);
-    }
-
-    /**
      * @param bool $resolveIds
      *
      * @return array|mixed|string|void
@@ -1409,9 +1428,9 @@ class Evo
     public function getUserDocGroups(bool $resolveIds = false)
     {
         $context = $this->getContext();
-        if (isset($_SESSION[$context . 'Docgroups']) && isset($_SESSION[$context . 'Validated'])) {
-            $dg = $_SESSION[$context . 'Docgroups'];
-            $dgn = $_SESSION[$context . 'DocgrpNames'] ?? false;
+        if (Session::get($context . 'Docgroups') && Session::get($context . 'Validated')) {
+            $dg = Session::get($context . 'Docgroups');
+            $dgn = Session::get($context . 'DocgrpNames', false);
         } else {
             $dg = '';
             $dgn = '';
@@ -1437,7 +1456,7 @@ class Evo
                 $dgn[] = $row->name;
             }
             // cache docgroup names to session
-            $_SESSION[$context . 'DocgrpNames'] = $dgn;
+            Session::put($context . 'DocgrpNames', $dgn);
 
             return $dgn;
         }
@@ -1629,7 +1648,7 @@ class Evo
         $udperms = new Legacy\Permissions();
         $udperms->user = $this->getLoginUserID();
         $udperms->document = $this->documentIdentifier;
-        $udperms->role = $_SESSION['mgrRole'];
+        $udperms->role = Session::get('mgrRole');
         // Doesn't have access to this document
         if (!$udperms->checkPermissions()) {
             $this->sendErrorPage();

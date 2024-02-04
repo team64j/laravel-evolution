@@ -395,17 +395,20 @@ class Parser
     /**
      * Получить содержимое шаблона с определенным номером
      *
-     * @param int $id Номер шаблона
+     * @param int|string $id Номер шаблона
      *
-     * @return string HTML код шаблона
+     * @return string|null HTML код шаблона
      */
-    public function getTemplate($id)
+    public function getTemplate(int|string $id): ?string
     {
         $tpl = null;
+
         $id = (int) $id;
+
         if ($id > 0) {
-            $tpl = Models\SiteTemplate::query()->find($id)->value('content');
+            $tpl = Models\SiteTemplate::query()->find($id)->content;
         }
+
         if ($tpl === null) {
             $tpl = '[*content*]';
         }
@@ -668,7 +671,7 @@ class Parser
      */
     public function getTemplateCodeFromDB($templateID)
     {
-        return SiteTemplate::query()->findOrFail($templateID)->value('content');
+        return SiteTemplate::query()->findOrFail($templateID)->content;
     }
 
     /**

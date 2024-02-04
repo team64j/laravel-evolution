@@ -79,10 +79,10 @@ if (!defined('MODX_BASE_PATH') || !defined('MODX_BASE_URL')) {
     );
 
     if (substr($script_name, -1 - strlen(MGR_DIR)) === '/' . MGR_DIR ||
-        strpos($script_name, '/' . MGR_DIR . '/') !== false
+        str_contains($script_name, '/' . MGR_DIR . '/')
     ) {
         $separator = MGR_DIR;
-    } elseif (strpos($script_name, '/assets/') !== false) {
+    } elseif (str_contains($script_name, '/assets/')) {
         $separator = 'assets';
     } else {
         $separator = '';

@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Team64j\LaravelEvolution\Http\Controllers\EvoController;
-use Team64j\LaravelEvolution\Legacy;
 
 class EvoServiceProvider extends ServiceProvider
 {
@@ -20,7 +19,6 @@ class EvoServiceProvider extends ServiceProvider
     {
         $this->app->singleton('evo', fn() => new DocumentParser());
         $this->app->alias('evo', DocumentParser::class);
-        $this->registerLegacy();
     }
 
     /**
@@ -31,18 +29,6 @@ class EvoServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->defineConstants();
         $this->defineRoutes();
-    }
-
-    /**
-     * @return void
-     */
-    protected function registerLegacy(): void
-    {
-        $this->app->singleton('evo.url', fn() => new Legacy\UrlProcessor());
-        $this->app->singleton('evo.tpl', fn() => new Legacy\Parser());
-        $this->app->singleton('evo.db', fn() => new Legacy\Database());
-        $this->app->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
-        $this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
     }
 
     /**
