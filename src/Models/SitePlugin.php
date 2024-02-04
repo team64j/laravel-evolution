@@ -13,7 +13,10 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property int $category
  * @property int $locked
  * @property int $disabled
+ * @property string $name
  * @property string $description
+ * @property string $plugincode
+ * @property string $properties
  * @property Category $categories
  * @method static Builder|SitePlugin activePhx()
  */

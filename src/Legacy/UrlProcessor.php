@@ -309,8 +309,8 @@ class UrlProcessor
         }
         $query = $qOrig;
 
-        $pre = $this->core->getConfig('friendly_url_prefix', '');
-        $suf = $this->core->getConfig('friendly_url_suffix', '');
+        $pre = (string) $this->core->getConfig('friendly_url_prefix', '');
+        $suf = (string) $this->core->getConfig('friendly_url_suffix', '');
         $pre = preg_quote($pre, '/');
         $suf = preg_quote($suf, '/');
         if ($pre && preg_match('@^' . $pre . '(.*)$@', $query, $matches)) {

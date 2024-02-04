@@ -2,7 +2,9 @@
 
 namespace Team64j\LaravelEvolution\Traits;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Team64j\LaravelEvolution\Models\SystemSetting;
 
 trait Settings
 {
@@ -120,47 +122,68 @@ trait Settings
     /**
      * Get Evolution CMS settings including, but not limited to, the system_settings table
      */
-    public function getSettings(): void
+    public function getSettings()
     {
-        $this->config = array_merge($this->getFactorySettings(), $this->config);
-
-        // setup default site id - new installation should generate a unique id for the site.
-        if ($this->getConfig('site_id', '') === '') {
-            $this->setConfig('site_id', 'MzGeQ2faT4Dw06+U49x3');
+        if ($config = Config::get('global')) {
+            return $this->config = $config;
         }
 
-        // store base_url and base_path inside config array
-        $this->setConfig('base_url', MODX_BASE_URL);
-        $this->setConfig('base_path', MODX_BASE_PATH);
-        $this->setConfig('site_url', MODX_SITE_URL);
-        $this->setConfig('site_manager_path', MODX_MANAGER_PATH);
-        $this->error_reporting = $this->getConfig('error_reporting');
-        $this->setConfig(
-            'filemanager_path',
-            str_replace(
-                '[(base_path)]',
-                MODX_BASE_PATH,
-                $this->getConfig('filemanager_path')
-            )
+        $this->config = Cache::rememberForever(
+            'config.global',
+            function () {
+                $config = array_merge(
+                    $this->getFactorySettings(),
+                    $this->config,
+                    SystemSetting::query()
+                        ->pluck('setting_value', 'setting_name')
+                        ->toArray()
+                );
+
+                // setup default site id - new installation should generate a unique id for the site.
+                if ($this->getConfig('site_id', '') === '') {
+                    $this->setConfig('site_id', 'MzGeQ2faT4Dw06+U49x3');
+                }
+
+                // store base_url and base_path inside config array
+                $this->setConfig('base_url', MODX_BASE_URL);
+                $this->setConfig('base_path', MODX_BASE_PATH);
+                $this->setConfig('site_url', MODX_SITE_URL);
+                $this->setConfig('site_manager_path', MODX_MANAGER_PATH);
+                $this->error_reporting = $this->getConfig('error_reporting');
+                $this->setConfig(
+                    'filemanager_path',
+                    str_replace(
+                        '[(base_path)]',
+                        MODX_BASE_PATH,
+                        $this->getConfig('filemanager_path')
+                    )
+                );
+
+                $this->setConfig(
+                    'snapshot_path',
+                    str_replace(
+                        '[(base_path)]',
+                        MODX_BASE_PATH,
+                        $this->getConfig('snapshot_path')
+                    )
+                );
+
+                $this->setConfig(
+                    'rb_base_dir',
+                    str_replace(
+                        '[(base_path)]',
+                        MODX_BASE_PATH,
+                        $this->getConfig('rb_base_dir')
+                    )
+                );
+
+                return $config;
+            }
         );
 
-        $this->setConfig(
-            'snapshot_path',
-            str_replace(
-                '[(base_path)]',
-                MODX_BASE_PATH,
-                $this->getConfig('snapshot_path')
-            )
-        );
+        Config::set('global', $this->config);
 
-        $this->setConfig(
-            'rb_base_dir',
-            str_replace(
-                '[(base_path)]',
-                MODX_BASE_PATH,
-                $this->getConfig('rb_base_dir')
-            )
-        );
+        return $this->config;
     }
 
     public function getFactorySettings(): array

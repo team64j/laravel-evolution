@@ -5,23 +5,23 @@ declare(strict_types=1);
 namespace Team64j\LaravelEvolution;
 
 use Exception;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
+use RuntimeException;
+use stdClass;
+use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
 use Team64j\LaravelEvolution\Legacy\Event;
-use Team64j\LaravelEvolution\Legacy\UrlProcessor;
-use Team64j\LaravelEvolution\Models\ActiveUser;
-use Team64j\LaravelEvolution\Models\ActiveUserLock;
-use Team64j\LaravelEvolution\Models\ActiveUserSession;
 use Team64j\LaravelEvolution\Models\DocumentGroup;
+use Team64j\LaravelEvolution\Models\DocumentgroupName;
 use Team64j\LaravelEvolution\Models\EventLog;
-use Team64j\LaravelEvolution\Models\MembergroupName;
 use Team64j\LaravelEvolution\Models\SiteContent;
 use Team64j\LaravelEvolution\Models\SitePlugin;
+use Team64j\LaravelEvolution\Models\SiteSnippet;
 use Team64j\LaravelEvolution\Models\SiteTemplate;
 use Team64j\LaravelEvolution\Models\SiteTmplvar;
 use Team64j\LaravelEvolution\Models\User;
@@ -31,220 +31,98 @@ class Evo
     use Traits\Settings {
         getSettings as loadConfig;
     }
-    use Traits\Helpers;
 
-    /**
-     * event object
-     *
-     * @var Event
-     */
     public Event $event;
-
-    /**
-     * @deprecated event object
-     * @var Event
-     */
-    public Event $Event;
-
-    /**
-     * @var array
-     */
-    public array $pluginEvent = [];
-
-    /**
-     * @var array
-     */
-    public $configGlobal = []; // contains backup of settings overwritten by user-settings
-    public $rs;
-    public $result;
-    public $sql;
-    public $debug = false;
-    public $documentIdentifier = 0;
-    public $documentMethod;
-    public $documentGenerated;
-    public $documentContent;
-    public $documentOutput;
-    public $tstart = 0;
-    public $mstart = 0;
-    public $minParserPasses = 2;
-    public $maxParserPasses = 10;
-    public $documentObject = [];
-    public $templateObject;
-    public $snippetObjects;
-    public $stopOnNotice = false;
-    public $executedQueries = 0;
-    public $queryTime = 0;
-    public $currentSnippet;
-    public $documentName;
-    public $aliases;
-    public $visitor;
-    public $entrypage;
-    /**
-     * feed the parser the execution start time
-     *
-     * @var bool
-     */
-    public $dumpSnippets = false;
-    public $snippetsCode;
-    public $snippetsTime = [];
-    public $chunkCache = [];
-    public $snippetCache = [];
-    public $modulesFromFile = [];
-    public $dumpSQL = false;
-    public $queryCode;
-    public $placeholders = [];
-    public $sjscripts = [];
-    public $jscripts = [];
-    public $loadedjscripts = [];
-    public $documentMap = [];
-    public $forwards = 3;
-    public $error_reporting = 1;
-    public $dumpPlugins = false;
-    public $pluginsCode;
-    public $pluginsTime = [];
-    public $pluginCache = [];
-    public $lockedElements = null;
-    public $tmpCache = [];
-    private $version = [];
-    public $extensions = [];
-    public $cacheKey = '';
-    public $recentUpdate = 0;
-    public $useConditional = false;
-    protected $systemCacheKey = '';
-    public $snipLapCount = 0;
-    public $messageQuitCount;
-    public $time;
-    public $sid;
-    private $q;
-    public $decoded_request_uri;
-    /** @var UrlProcessor|null */
-    public $urlProcessor;
-    /**
-     * @var array
-     */
-    private $dataForView = [];
-    /**
-     * @var string
-     */
-    private $context = '';
-
-    /**
-     * @deprecated Needs for the newChunkie class by Thomas Jakobi
-     * @var array
-     */
-    public array $chunkieCache = [];
-
-    /**
-     * @deprecated Needs for the modxRTEbridge class
-     * @var array
-     */
-    public array $modxRTEbridge = [];
-
-    /**
-     * @var Legacy\DeprecatedCore
-     * @deprecated use ->getDeprecatedCore()
-     */
-    public $old;
-
-    /**
-     * @deprecated use UrlProcessor::getFacadeRoot()->documentListing
-     */
-    public array $documentListing = [];
-
-    /**
-     * @deprecated use UrlProcessor::getFacadeRoot()->virtualDir
-     */
-    public $virtualDir;
-
-    /**
-     * @deprecated use UrlProcessor::getFacadeRoot()->aliasListing
-     */
-    public array $aliasListing = [];
-
-    /**
-     * @deprecated
-     * @var array|false
-     */
-    public array|false $_TVnames = false;
-
+    public int|string $documentIdentifier = 0;
+    public string $documentOutput;
+    public string $documentContent;
+    public array $documentObject;
+    public int $minParserPasses = 2;
+    public int $maxParserPasses = 10;
+    public array $chunkCache = [];
+    public array $snippetCache = [];
+    public array $pluginCache = [];
+    protected string $documentMethod;
+    protected mixed $time;
+    protected string $q;
+    protected string $systemCacheKey;
+    protected int $documentGenerated;
+    protected array $sjscripts = [];
+    protected array $jscripts = [];
+    protected float $tstart = 0;
+    protected mixed $recentUpdate;
+    protected array $pluginsTime = [];
+    protected string $queryCode = '';
+    protected array $snippetsTime = [];
+    protected string $snippetsCode = '';
+    protected string $pluginsCode = '';
+    protected bool $useConditional = false;
+    protected float $queryTime = 0;
+    protected int $forwards = 3;
+    protected string $cacheKey;
+    protected array $tmpCache = [];
+    protected string $documentName;
+    protected bool $dumpPlugins = false;
+    protected bool $dumpSnippets = false;
+    protected bool $dumpSQL = false;
+    protected bool $debug = false;
+    protected array $placeholders = [];
+    protected array $aliases = [];
+    protected int $snipLapCount = 0;
+    protected array $dataForView = [];
+    protected mixed $currentSnippet;
     protected array $evolutionProperty = [
         'db' => 'getDatabase',
     ];
 
     /**
-     * @throws Exception
+     * @var array
+     * @deprecated
      */
-    public function __construct()
-    {
-//        $this->tstart = $_SERVER['REQUEST_TIME_FLOAT'] ?? 0;
-//        app()->instance('path', $this->path());
-//        app()->instance('path.base', $this->basePath());
-//        app()->instance('path.lang', $this->langPath());
-//        app()->instance('path.config', $this->configPath());
-//        app()->instance('path.public', $this->publicPath());
-//        app()->instance('path.storage', $this->storagePath());
-//        app()->instance('path.database', $this->databasePath());
-//        app()->instance('path.resources', $this->resourcePath());
-//        app()->instance('path.bootstrap', $this->bootstrapPath());
+    public array $documentListing = [];
 
-        /**
-         * Laravel: $this->config instance of the Illuminate\Config\Repository
-         * EvolutionCMS: $this->config is array
-         * Before loading the provider we merge settings!!!
-         *
-         * @TODO: This is dirty code. Any ideas?
-         */
-//        $this->saveConfig = $this->config;
-//        $this->config = $this->configCompatibility();
-//        $this->booting(function () {
-//            $this->config = $this->configCompatibility();
-//        });
-        //parent::__construct();
-//
-//        $this->initialize();
+    /**
+     * @var array
+     * @deprecated
+     */
+    public array $aliasListing = [];
+
+    /**
+     * @var string
+     * @deprecated
+     */
+    public string $virtualDir = '';
+
+    /**
+     * @var Event
+     * @deprecated
+     */
+    public Event $Event;
+
+    /**
+     * @param $name
+     *
+     * @return mixed
+     */
+    public function getService($name): mixed
+    {
+        return $this->get($name);
     }
 
     /**
-     * @return void
+     * @param $name
+     *
+     * @return mixed
      */
-    public function initialize(): void
-    {
-        $this->saveConfig = $this->config;
-        $this->config = $this->configCompatibility();
-
-        // events
-        $this->event = new Legacy\Event();
-        $this->Event = &$this->event; // alias for backward compatibility
-        $this->time = $_SERVER['REQUEST_TIME']; // for having global timestamp
-
-        //$this->getService('ExceptionHandler');
-
-        $this->checkAuth();
-        $this->getSettings();
-        $this->q = Request::getPathInfo();
-
-//        /** @var \Illuminate\Routing\RouteCollection $routes */
-//        $routes = app('router')->getRoutes();
-//        $routes->refreshNameLookups();
-//        $routes->refreshActionLookups();
-    }
-
-    final public function __clone()
-    {
-        //
-    }
-
-    public function get($name)
+    public function get($name): mixed
     {
         return app('evo.' . $name);
     }
 
     /**
-     * @see: https://stackoverflow.com/a/13186679/2323306
-     *
      * @param string $name
      *
-     * @return mixed|null
+     * @return mixed|void|null
      */
     public function __get(string $name)
     {
@@ -261,12 +139,12 @@ class Evo
     }
 
     /**
-     * @param $method_name
-     * @param $arguments
+     * @param string $method_name
+     * @param array $arguments
      *
      * @return mixed
      */
-    public function __call($method_name, $arguments)
+    public function __call(string $method_name, array $arguments = [])
     {
         $old = $this->getDeprecatedCore();
         if (method_exists($old, $method_name)) {
@@ -287,26 +165,236 @@ class Evo
     }
 
     /**
-     * @param string $connector
+     * @param string $property
      *
      * @return bool
      */
-    public function checkSQLconnect($connector = 'db')
+    public function hasEvolutionProperty(string $property): bool
     {
-        $flag = false;
-        if (is_scalar($connector) && !empty($connector) && isset($this->{$connector}) &&
-            $this->{$connector} instanceof Interfaces\DatabaseInterface
-        ) {
-            $flag = (bool) $this->{$connector}->conn;
-        }
-
-        return $flag;
+        return isset($this->evolutionProperty[$property]);
     }
 
     /**
+     * @param string $property
      *
+     * @return null|mixed
      */
-    public function checkAuth($context = '')
+    public function getEvolutionProperty(string $property): mixed
+    {
+        $abstract = Arr::get($this->evolutionProperty, $property);
+
+        return $abstract === null ? null : $this->$abstract();
+    }
+
+    /**
+     * @return DeprecatedCore
+     */
+    public function getDeprecatedCore(): DeprecatedCore
+    {
+        return app('evo.deprecated');
+    }
+
+    public function getMail()
+    {
+        return $this->getService('MODxMailer');
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getModifiers(): mixed
+    {
+        return $this->getService('MODIFIERS');
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getPhpCompat(): mixed
+    {
+        return $this->getService('PHPCOMPAT');
+    }
+
+    /**
+     * @return string
+     */
+    public function executeParser(): string
+    {
+        if (app()->runningInConsole()) {
+            abort(500, 'Call DocumentParser::executeParser on CLI mode');
+        }
+
+        $this->initialize();
+
+        $this->_IIS_furl_fix(); // IIS friendly url fix
+
+        // check site settings
+        if ($this->checkSiteStatus()) {
+            // make sure the cache doesn't need updating
+            $this->updatePubStatus();
+
+            // find out which document we need to display
+            $this->documentMethod = Request::path() == '/' ? 'id' : 'alias';
+            $this->documentIdentifier = $this->getDocumentIdentifier($this->documentMethod);
+        } else {
+            header('HTTP/1.0 503 Service Unavailable');
+            $this->setSystemCacheKey('unavailable');
+            if (!$this->config['site_unavailable_page']) {
+                // display offline message
+                $this->documentContent = $this->getConfig('site_unavailable_message');
+
+                return $this->outputContent();
+            }
+
+            // setup offline page document settings
+            $this->documentMethod = 'id';
+            $this->documentIdentifier = $this->getConfig('site_unavailable_page');
+        }
+
+        if ($this->documentMethod !== 'alias') {
+            app('evo.tpl')->setTemplatePath('views/');
+
+            //$this->_fixURI();
+
+            // invoke OnWebPageInit event
+            $this->invokeEvent('OnWebPageInit');
+
+            // invoke OnLogPageView event
+            if ($this->getConfig('track_visitors')) {
+                $this->invokeEvent('OnLogPageHit');
+            }
+
+            if ($this->getConfig('seostrict')) {
+                $this->sendStrictURI();
+            }
+
+            return $this->prepareResponse();
+        }
+
+        $this->documentIdentifier = $this->cleanDocumentIdentifier($this->documentIdentifier);
+
+        if ((bool) $this->getConfig('friendly_alias_urls') == 1) {
+            // Check use_alias_path and check if $this->virtualDir is set to anything, then parse the path
+            if ((bool) $this->getConfig('use_alias_path') == 1) {
+                // use_alias_path = Use Friendly URL alias path = YES
+                $virtualDir = app('evo.url')->virtualDir;
+                $alias = ($virtualDir != '' ? $virtualDir . '/' : '') . $this->documentIdentifier;
+
+                if (isset(app('evo.url')->documentListing[$alias])) {
+                    $this->documentIdentifier = app('evo.url')->documentListing[$alias];
+                } else {
+                    $parent = $virtualDir ? app('evo.url')->getIdFromAlias($virtualDir) : 0;
+
+                    if ($parent === null) {
+                        $this->sendErrorPage();
+                    }
+
+                    $doc = SiteContent::query()
+                        ->select('id')
+                        ->where('parent', $parent)
+                        ->where('alias', $this->documentIdentifier)
+                        ->first();
+
+                    if (is_null($doc)) {
+                        $hidden = Cache::rememberForever('hidden_aliases', function () {
+                            return SiteContent::query()
+                                ->select('id', 'parent')
+                                ->where('alias_visible', 0)
+                                ->where('isfolder', 1)
+                                ->pluck('parent', 'id')->toArray();
+                        });
+
+                        $docs = SiteContent::query()
+                            ->select('id', 'parent')
+                            ->where('alias', $this->documentIdentifier)
+                            ->get();
+
+                        $found = false;
+
+                        foreach ($docs as $doc) {
+                            $tmp_parent = $doc->parent;
+                            while (isset($hidden[$tmp_parent])) {
+                                $tmp_parent = $hidden[$tmp_parent];
+                            }
+                            if ($parent == $tmp_parent) {
+                                $found = true;
+                                break;
+                            }
+                        }
+
+                        if (is_null($doc) || !$found) {
+                            $this->sendErrorPage();
+                        }
+                    }
+
+                    $this->documentIdentifier = $doc->getKey();
+                }
+            } else {
+                // use_alias_path = Use Friendly URL alias path = NO
+                if (isset(app('evo.url')->documentListing[$this->documentIdentifier])) {
+                    $this->documentIdentifier =
+                        app('evo.url')->documentListing[$this->documentIdentifier];
+                } else {
+                    $doc = SiteContent::query()
+                        ->select('id')
+                        ->where('alias', $this->documentIdentifier)
+                        ->first();
+
+                    if (is_null($doc)) {
+                        $this->sendErrorPage();
+                    }
+
+                    $this->documentIdentifier = $doc->getKey();
+                }
+            }
+        }
+
+        $this->documentMethod = 'id';
+        app('evo.tpl')->setTemplatePath('views/');
+
+        //$this->_fixURI();
+
+        // invoke OnWebPageInit event
+        $this->invokeEvent('OnWebPageInit');
+
+        // invoke OnLogPageView event
+        if ($this->getConfig('track_visitors')) {
+            $this->invokeEvent('OnLogPageHit');
+        }
+
+        if ($this->getConfig('seostrict')) {
+            $this->sendStrictURI();
+        }
+
+        return $this->prepareResponse();
+    }
+
+    /**
+     * @return void
+     */
+    public function initialize(): void
+    {
+        $this->saveConfig = $this->config;
+        $this->config = $this->configCompatibility();
+
+        // events
+        $this->event = new Legacy\Event();
+        $this->Event = &$this->event; // alias for backward compatibility
+        $this->time = $_SERVER['REQUEST_TIME']; // for having global timestamp
+
+        //$this->getService('ExceptionHandler');
+
+        $this->checkAuth();
+        $this->getSettings();
+        $this->q = Request::getPathInfo();
+    }
+
+    /**
+     * @param string $context
+     *
+     * @return void
+     */
+    public function checkAuth(string $context = ''): void
     {
         if (empty($context)) {
             $context = $this->getContext();
@@ -314,7 +402,7 @@ class Evo
         if ($this->getLoginUserID($context) !== false) {
             $result = $this->checkAccess($this->getLoginUserID($context));
             if ($result === false) {
-                \UserManager::logout();
+                UserManager::logout();
                 if (IN_MANAGER_MODE) {
                     $this->sendRedirect('/' . MGR_DIR);
                 }
@@ -323,102 +411,76 @@ class Evo
     }
 
     /**
-     * @param $userId
-     *
-     * @return bool
+     * @return string
      */
-    public function checkAccess($userId): bool
+    public function getContext(): string
     {
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        $user = User::query()->find(evo()->getLoginUserID($context));
-        if (is_null($user)) {
-            return false;
-        }
-        if ($user->attributes->blocked != 0) {
-            return false;
-        }
-        if ($user->attributes->blockeduntil > time()) {
-            return false;
-        }
-        if ($user->attributes->blockedafter < time() && $user->attributes->blockedafter > 0) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Loads an extension from the extenders folder.
-     * You can load any extension creating a boot file:
-     * MODX_MANAGER_PATH."includes/extenders/ex_{$extname}.inc.php"
-     * $extname - extension name in lowercase
-     *
-     * @param $extname
-     * @param bool $reload
-     *
-     * @return bool
-     * @deprecated use getService
-     */
-    public function loadExtension($extname, $reload = true)
-    {
-        if ($this->isEvolutionProperty($extname)) {
-            return $this->getEvolutionProperty($extname);
-        }
-
-        $out = false;
-        $found = false;
-        $flag = ($reload || !in_array($extname, $this->extensions));
-        if ($this->checkSQLconnect('db') && $flag) {
-            $evtOut = $this->invokeEvent('OnBeforeLoadExtension', ['name' => $extname, 'reload' => $reload]);
-            if (is_array($evtOut) && count($evtOut) > 0) {
-                $out = array_pop($evtOut);
-            }
-        }
-        if (!$out && $flag) {
-            $extname = trim(str_replace(['..', '/', '\\'], '', strtolower($extname)));
-            $filename = MODX_MANAGER_PATH . "includes/extenders/ex_{$extname}.inc.php";
-            $out = is_file($filename) ? include $filename : false;
-        }
-        if ($out && !in_array($extname, $this->extensions)) {
-            $this->extensions[] = $extname;
+        if (empty($this->context)) {
+            $out = $this->isFrontend() ? 'web' : 'mgr';
+        } else {
+            $out = $this->context;
         }
 
         return $out;
     }
 
     /**
-     * Returns the current micro time
-     *
-     * @return float
+     * @return bool
      */
-    public function getMicroTime()
+    public function isFrontend(): bool
     {
-        [$usec, $sec] = explode(' ', microtime());
-
-        return ((float) $usec + (float) $sec);
+        return !$this->isBackend();
     }
 
     /**
-     * Redirect
+     * @return bool
+     */
+    public function isBackend(): bool
+    {
+        return defined('IN_MANAGER_MODE') && IN_MANAGER_MODE;
+    }
+
+    /**
+     * @param string $context
      *
+     * @return false|mixed
+     */
+    public function getLoginUserID(string $context = ''): mixed
+    {
+        if (app()->runningInConsole() && defined('EVO_CLI_USER')) {
+            return EVO_CLI_USER;
+        }
+        $out = false;
+        if (empty($context)) {
+            $context = $this->getContext();
+        }
+        if (isset($_SESSION[$context . 'Validated'])) {
+            $out = $_SESSION[$context . 'InternalKey'];
+        }
+
+        return $out;
+    }
+
+    /**
      * @param string $url
      * @param int $count_attempts
-     * @param string $type REDIRECT_HEADER(default)|REDIRECT_REFRESH
+     * @param string $type
      * @param string $responseCode
      *
-     * @return null|false
-     * @throws Exception
+     * @return false|void
      */
-    public function sendRedirect($url, $count_attempts = 0, $type = 'REDIRECT_HEADER', $responseCode = '')
+    public function sendRedirect(
+        string $url,
+        int $count_attempts = 0,
+        string $type = 'REDIRECT_HEADER',
+        string $responseCode = '')
     {
         if (!$url) {
             return false;
         }
 
         if (Str::contains($url, "\n")) {
-            throw new Exception('No newline allowed in redirect url.');
+            abort(500, 'No newline allowed in redirect url.');
         }
 
         if ($count_attempts) {
@@ -466,70 +528,601 @@ class Evo
     }
 
     /**
-     * Forward to another page
-     *
-     * @param int|string $id
-     * @param string $responseCode
+     * @return void
      */
-    public function sendForward($id, $responseCode = '')
+    public function _IIS_furl_fix(): void
     {
-        if ($this->forwards <= 0) {
-            $this->getService('ExceptionHandler')->messageQuit("Internal Server Error id={$id}");
-            header('HTTP/1.0 500 Internal Server Error');
-            die('<h1>ERROR: Too many forward attempts!</h1><p>The request could not be completed due to too many unsuccessful forward attempts.</p>');
+        if ($this->getConfig('friendly_urls') != 1) {
+            return;
         }
-        $this->forwards--;
-        $this->documentIdentifier = $id;
-        $this->documentMethod = 'id';
-        if ($responseCode) {
-            header($responseCode);
+
+        if (!Str::contains($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS')) {
+            return;
         }
-        $this->prepareResponse();
-        exit();
+
+        $url = $_SERVER['QUERY_STRING'];
+        $err = substr($url, 0, 3);
+        if ($err !== '404' && $err !== '405') {
+            return;
+        }
+
+        $k = array_keys($_GET);
+        unset($_GET[$k[0]], $_REQUEST[$k[0]]);
+        // remove 404,405 entry
+        $qp = parse_url(str_replace(MODX_SITE_URL, '', substr($url, 4)));
+        $_SERVER['QUERY_STRING'] = $qp['query'];
+        if ($qp['query']) {
+            parse_str($qp['query'], $qv);
+            foreach ($qv as $n => $v) {
+                $_REQUEST[$n] = $_GET[$n] = $v;
+            }
+        }
+        $_SERVER['PHP_SELF'] = MODX_BASE_URL . $qp['path'];
+        $this->q = $qp['path'];
     }
 
     /**
-     * Redirect to the error page, by calling sendForward(). This is called for example when the page was not found.
-     *
-     * @param bool $noEvent
+     * @return bool
      */
-    public function sendErrorPage($noEvent = false)
+    public function checkSiteStatus(): bool
     {
-        $this->setSystemCacheKey('notfound');
-        if (!$noEvent) {
-            // invoke OnPageNotFound event
-            $this->invokeEvent('OnPageNotFound');
+        if ($this->getConfig('site_status')) {
+            return true;
         }
-        $url = app('evo.url')->getNotFoundPageId();
 
-        $this->sendForward($url, 'HTTP/1.0 404 Not Found');
-        exit();
+        if ($this->isLoggedin() && $this->hasPermission('access_permissions', 'mgr')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
-     * @param bool $noEvent
+     * @param string $context
+     *
+     * @return bool
      */
-    public function sendUnauthorizedPage($noEvent = false)
+    public function isLoggedIn(string $context = 'mgr'): bool
     {
-        // invoke OnPageUnauthorized event
-        $_REQUEST['refurl'] = $this->documentIdentifier;
-        $this->setSystemCacheKey('unauth');
-        if (!$noEvent) {
-            $this->invokeEvent('OnPageUnauthorized');
-        }
+        $context = $context == 'mgr' ? 'mgr' : 'web';
+        $_ = $context . 'Validated';
 
-        $this->sendForward(app('evo.url')->getUnAuthorizedPageId(), 'HTTP/1.1 401 Unauthorized');
-        exit();
+        return app()->runningInConsole() || Session::exists($_);
     }
 
     /**
-     * Returns the document identifier of the current request
+     * @param $pm
+     * @param string $context
      *
-     * @param string $method id and alias are allowed
-     *
-     * @return int
+     * @return bool
      */
-    public function getDocumentIdentifier($method)
+    public function hasPermission($pm, string $context = ''): bool
+    {
+        if (app()->runningInConsole()) {
+            return true;
+        }
+
+        if (empty($context)) {
+            $context = $this->getContext();
+        }
+        if (isset($_SESSION[$context . 'Role']) && $_SESSION[$context . 'Role'] == 1) {
+            return true;
+        }
+
+        $state = false;
+        $pms = Session::get($context . 'Permissions', []);
+        if ($pms) {
+            $state = isset($pms[$pm]) && (bool) $pms[$pm] === true;
+        }
+
+        return $state;
+    }
+
+    /**
+     * @return void
+     */
+    public function updatePubStatus(): void
+    {
+        $cacheRefreshTime = 0;
+        $recent_update = 0;
+        if (file_exists($this->getSitePublishingFilePath())) {
+            @include $this->getSitePublishingFilePath();
+        }
+        $this->recentUpdate = $recent_update;
+
+        $timeNow = $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time');
+        if ($timeNow < $cacheRefreshTime || $cacheRefreshTime == 0) {
+            return;
+        }
+
+        // now, check for documents that need publishing
+        $field = ['published' => 1, 'publishedon' => $timeNow];
+        $where = "pub_date <= $timeNow AND pub_date!=0 AND published=0";
+        $result_pub = SiteContent::query()->select('id')->whereRaw($where)->get();
+        SiteContent::query()->whereRaw($where)->update($field);
+
+        if ($result_pub->count() >= 1) { //Event unPublished doc
+            foreach ($result_pub as $row_pub) {
+                $this->invokeEvent("OnDocUnPublished", [
+                    "docid" => $row_pub->id,
+                ]);
+            }
+        }
+
+        // now, check for documents that need un-publishing
+        $field = ['published' => 0, 'publishedon' => 0];
+        $where = "unpub_date <= $timeNow AND unpub_date!=0 AND published=1";
+
+        $result_unpub = SiteContent::query()->select('id')->whereRaw($where)->get();
+
+        SiteContent::query()->whereRaw($where)->update($field);
+
+        if ($result_unpub->count() >= 1) { //Event unPublished doc
+            foreach ($result_unpub as $row_unpub) {
+                $this->invokeEvent("OnDocUnPublished", [
+                    "docid" => $row_unpub->id,
+                ]);
+            }
+        }
+
+        $this->recentUpdate = $timeNow;
+
+        $this->clearCache('full');
+    }
+
+    /**
+     * @return string
+     */
+    public function getSitePublishingFilePath(): string
+    {
+        return storage_path('framework/cache/data/sitePublishing.idx.php');
+    }
+
+    /**
+     * @param string $evtName
+     * @param array $extParams
+     *
+     * @return array|false
+     */
+    public function invokeEvent(string $evtName, array $extParams = []): bool|array
+    {
+        if ($this->isSafemode()) {
+            return false;
+        }
+
+        $results = [];
+
+        if (!$evtName) {
+            return false;
+        }
+
+        $out = app('events')->dispatch('evolution.' . $evtName, [$extParams]);
+        if ($out === false) {
+            return false;
+        }
+
+        if (is_array($out)) {
+            foreach ($out as $result) {
+                if ($result !== null) {
+                    $results[] = $result;
+                }
+            }
+        }
+
+        if (!isset($this->pluginEvent[$evtName])) {
+            return $results ?: false;
+        }
+
+        $this->storeEvent();
+
+        foreach ($this->pluginEvent[$evtName] as $pluginName) {
+            $eventtime = $this->dumpPlugins ? $this->getMicroTime() : 0;
+            // reset event object
+            $e = &$this->event;
+            $e->_resetEventObject();
+            $e->name = $evtName;
+            $e->activePlugin = $pluginName;
+
+            // get plugin code
+            $_ = $this->getPluginCode($pluginName);
+            $pluginCode = $_['code'];
+            $pluginProperties = $_['props'];
+
+            // load default params/properties
+            $parameter = $this->parseProperties($pluginProperties);
+
+            if (!empty($extParams)) {
+                $parameter = array_merge($parameter, $extParams);
+            }
+
+            // eval plugin
+            $this->evalPlugin($pluginCode, $parameter);
+
+            if (class_exists('PHxParser')) {
+                $this->setConfig('enable_filter', 0);
+            }
+
+            if ($this->dumpPlugins) {
+                $eventtime = $this->getMicroTime() - $eventtime;
+                $this->pluginsCode .= sprintf(
+                    '<fieldset><legend><b>%s / %s</b> (%2.2f ms)</legend>',
+                    $evtName,
+                    $pluginName,
+                    $eventtime * 1000
+                );
+                foreach ($parameter as $k => $v) {
+                    $this->pluginsCode .= $k . ' => ' . print_r($v, true) . '<br>';
+                }
+                $this->pluginsCode .= '</fieldset><br />';
+                $this->pluginsTime[$evtName . ' / ' . $pluginName] += $eventtime;
+            }
+
+            if ($this->event->getOutput() != '') {
+                $results[] = $this->event->getOutput();
+            }
+
+            if (!$this->event->_propagate) {
+                break;
+            }
+        }
+
+        $this->restoreEvent();
+
+        return $results;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isSafeMode(): bool
+    {
+        return defined('SAFE_MODE') && SAFE_MODE && $this->isBackend();
+    }
+
+    /**
+     * @return Event
+     */
+    public function storeEvent(): Event
+    {
+        if ($this->event->activePlugin !== '') {
+            $event = new Event;
+            $event->setPreviousEvent($this->event);
+            $this->event = $event;
+            $this->Event = &$this->event;
+        } else {
+            $event = $this->event;
+        }
+
+        return $event;
+    }
+
+    /**
+     * @return float
+     */
+    public function getMicroTime(): float
+    {
+        [$usec, $sec] = explode(' ', microtime());
+
+        return ((float) $usec + (float) $sec);
+    }
+
+    /**
+     * @param $pluginName
+     *
+     * @return array
+     */
+    public function getPluginCode($pluginName): array
+    {
+        $plugin = [];
+        if (isset($this->pluginCache[$pluginName])) {
+            $pluginCode = $this->pluginCache[$pluginName];
+            $pluginProperties = $this->pluginCache[$pluginName . 'Props'] ?? '';
+        } else {
+            $plugin = SitePlugin::query()
+                ->select('name', 'plugincode', 'properties')
+                ->where('name', $pluginName)
+                ->where('disabled', 0)
+                ->first()
+                ->toArray();
+
+            if (!is_null($plugin)) {
+                $pluginCode = $this->pluginCache[$plugin['name']] = $plugin['plugincode'];
+                $pluginProperties = $this->pluginCache[$plugin['name'] . 'Props'] = $plugin['properties'];
+            } else {
+                $pluginCode = $this->pluginCache[$pluginName] = "return false;";
+                $pluginProperties = '';
+            }
+        }
+        $plugin['code'] = $pluginCode;
+        $plugin['props'] = $pluginProperties;
+
+        return $plugin;
+    }
+
+    /**
+     * @param $propertyString
+     * @param $elementName
+     * @param $elementType
+     *
+     * @return array
+     */
+    public function parseProperties($propertyString, $elementName = null, $elementType = null): array
+    {
+        $property = [];
+
+        if (is_scalar($propertyString)) {
+            $propertyString = trim($propertyString);
+            $propertyString = str_replace(['{}', '} {'], ['', ','], $propertyString);
+            if (!empty($propertyString) && $propertyString !== '{}') {
+                $jsonFormat = data_is_json($propertyString, true);
+                // old format
+                if ($jsonFormat === false) {
+                    $props = explode('&', $propertyString);
+                    foreach ($props as $prop) {
+                        if (empty($prop)) {
+                            continue;
+                        }
+
+                        if (!str_contains($prop, '=')) {
+                            $property[trim($prop)] = '';
+                            continue;
+                        }
+
+                        $_ = explode('=', $prop, 2);
+                        $key = trim($_[0]);
+                        $p = explode(';', trim($_[1]));
+                        $value = match ($p[1]) {
+                            'list', 'list-multi', 'checkbox', 'radio' => !isset($p[3]) ? '' : $p[3],
+                            default => !isset($p[2]) ? '' : $p[2],
+                        };
+                        if (!empty($key)) {
+                            $property[$key] = $value;
+                        }
+                    }
+                    // new json-format
+                } else {
+                    if (!empty($jsonFormat)) {
+                        foreach ($jsonFormat as $key => $row) {
+                            if (!empty($key)) {
+                                if (is_array($row)) {
+                                    if (isset($row[0]['value'])) {
+                                        $value = $row[0]['value'];
+                                    }
+                                } else {
+                                    $value = $row;
+                                }
+                                if (isset($value) && $value !== '') {
+                                    $property[$key] = $value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } elseif (is_array($propertyString)) {
+            $property = $propertyString;
+        }
+        if (!empty($elementName) && !empty($elementType)) {
+            $out = $this->invokeEvent('OnParseProperties', [
+                'element' => $elementName,
+                'type' => $elementType,
+                'args' => $property,
+            ]);
+            if (is_array($out)) {
+                $out = array_pop($out);
+            }
+            if (is_array($out)) {
+                $property = $out;
+            }
+        }
+
+        return $property;
+    }
+
+    /**
+     * @param string $pluginCode
+     * @param array $params
+     *
+     * @return void
+     */
+    public function evalPlugin(string $pluginCode, array $params): void
+    {
+        $modx = &$this;
+        if (!is_object($modx->event)) {
+            $modx->event = new stdClass();
+        }
+
+        $modx->event->params = &$params; // store params inside event object
+
+        if (is_array($params)) {
+            extract($params, EXTR_SKIP);
+        }
+        /* if uncomment incorrect work plugin, cant understend where use this code and for what?
+        // This code will avoid further execution of plugins in case they cause a fatal-error. clearCache() will delete those locks to allow execution of locked plugins again.
+        // Related to https://github.com/modxcms/evolution/issues/1130
+        $lock_file_path = MODX_BASE_PATH . 'assets/cache/lock_' . str_replace(' ','-',strtolower($this->event->activePlugin)) . '.pageCache.php';
+        if($this->isBackend()) {
+        if(is_file($lock_file_path)) {
+        $msg = sprintf("Plugin parse error, Temporarily disabled '%s'.", $this->event->activePlugin);
+        $this->logEvent(0, 3, $msg, $msg);
+        return;
+        }
+        elseif(stripos($this->event->activePlugin,'ElementsInTree')===false) touch($lock_file_path);
+        }*/
+        ob_start();
+        eval($pluginCode);
+        $msg = ob_get_clean();
+        // When reached here, no fatal error occured so the lock should be removed.
+        /*if(is_file($lock_file_path)) unlink($lock_file_path);*/
+        $error_info = error_get_last();
+
+        if ((0 < $this->getConfig('error_reporting')) && $msg && $error_info !== null &&
+            $this->detectError($error_info['type'])
+        ) {
+            $msg = $msg === false ? 'ob_get_contents() error' : $msg;
+            $this->getService('ExceptionHandler')->messageQuit(
+                'PHP Parse Error',
+                '',
+                true,
+                $error_info['type'],
+                $error_info['file'],
+                'Plugin',
+                $error_info['message'],
+                $error_info['line'],
+                $msg
+            );
+            if ($this->isBackend()) {
+                $this->event->alert(
+                    'An error occurred while loading. Please see the event log for more information.<p>' . $msg . '</p>'
+                );
+            }
+        } else {
+            echo $msg;
+        }
+        unset($modx->event->params);
+    }
+
+    /**
+     * @param int $error
+     *
+     * @return bool
+     */
+    public function detectError(int $error): bool
+    {
+        $detected = false;
+        if ($this->getConfig('error_reporting') === 199 && $error) {
+            $detected = true;
+        } elseif ($this->getConfig('error_reporting') === 99 && ($error & ~E_USER_DEPRECATED)) {
+            $detected = true;
+        } elseif ($this->getConfig('error_reporting') === 2 && ($error & ~E_NOTICE & ~E_USER_DEPRECATED)) {
+            $detected = true;
+        } elseif ($this->getConfig('error_reporting') === 1 && ($error & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT)) {
+            $detected = true;
+        }
+
+        return $detected;
+    }
+
+    /**
+     * @return Event|null
+     */
+    public function restoreEvent(): ?Event
+    {
+        $event = $this->event->getPreviousEvent();
+        if ($event) {
+            unset($this->event);
+            $this->event = $event;
+            $this->Event = &$this->event;
+        } else {
+            $this->event->activePlugin = '';
+        }
+
+        return $event;
+    }
+
+    /**
+     * @param string $type
+     * @param bool $report
+     *
+     * @return void
+     */
+    public function clearCache(string $type = '', bool $report = false): void
+    {
+        $cache_dir = app()->bootstrapPath();
+        $path = $this['config']['view.compiled'];
+
+        if ($path) {
+            foreach ($this['files']->glob("$path/*") as $view) {
+                $this['files']->delete($view);
+            }
+        }
+
+        if (is_array($type)) {
+            foreach ($type as $_) {
+                $this->clearCache($_, $report);
+            }
+        } elseif ($type === 'full') {
+            $sync = new Legacy\Cache();
+            $sync->setCachePath($cache_dir);
+            $sync->setReport($report);
+            $sync->emptyCache();
+        } elseif (preg_match('@^[1-9]\d*$@', $type)) {
+            $key = ($this->getConfig('cache_type') == 2) ? $this->makePageCacheKey($type) : $type;
+            $file_name = "docid_" . $key . "_*.pageCache.php";
+            $cache_path = $cache_dir . $file_name;
+            $files = (array) (glob($cache_path) ?: []);
+            $files[] = $cache_dir . "docid_" . $key . ".pageCache.php";
+            foreach ($files as $file) {
+                if (!is_file($file)) {
+                    continue;
+                }
+                unlink($file);
+            }
+        } else {
+            $files = glob($cache_dir . '*');
+            foreach ($files as $file) {
+                $name = basename($file);
+                if (!str_contains($name, '.pageCache.php')) {
+                    continue;
+                }
+                if (!is_file($file)) {
+                    continue;
+                }
+                unlink($file);
+            }
+        }
+    }
+
+    /**
+     * @param $id
+     *
+     * @return mixed
+     */
+    public function makePageCacheKey($id): mixed
+    {
+        $hash = $id;
+        $tmp = null;
+        $params = Request::collect()->sortKeys()->toArray();
+        $cacheKey = $this->getSystemCacheKey();
+        if (!empty($cacheKey)) {
+            $hash = $cacheKey;
+        } else {
+            if (!empty($params)) {
+                $hash .= '_' . md5(http_build_query($params));
+            }
+        }
+        $evtOut = $this->invokeEvent("OnMakePageCacheKey", ["hash" => &$hash, "id" => $id, 'params' => $params]);
+        if (is_array($evtOut) && count($evtOut) > 0) {
+            $tmp = array_pop($evtOut);
+        }
+
+        return empty($tmp) ? $hash : $tmp;
+    }
+
+    /**
+     * @return string
+     */
+    public function getSystemCacheKey(): string
+    {
+        return $this->systemCacheKey;
+    }
+
+    /**
+     * @param string $systemCacheKey
+     *
+     * @return void
+     */
+    public function setSystemCacheKey(string $systemCacheKey): void
+    {
+        $this->systemCacheKey = $systemCacheKey;
+    }
+
+    /**
+     * @param string $method
+     *
+     * @return bool|float|int|mixed|string|void|null
+     */
+    public function getDocumentIdentifier(string $method)
     {
         // function to test the query and find the retrieval method
         if ($method === 'alias') {
@@ -555,127 +1148,161 @@ class Evo
     }
 
     /**
-     * Check for manager or webuser login session since v1.2
+     * @param bool $noEvent
      *
-     * @param string $context
-     *
-     * @return bool
+     * @return void
      */
-    public function isLoggedIn(string $context = 'mgr'): bool
+    public function sendErrorPage(bool $noEvent = false): void
     {
-        $context = $context == 'mgr' ? 'mgr' : 'web';
-        $_ = $context . 'Validated';
-
-        return app()->runningInConsole() || Session::exists($_);
-    }
-
-    /**
-     * Check for manager login session
-     *
-     * @return boolean
-     */
-    public function checkSession(): bool
-    {
-        return $this->isLoggedin();
-    }
-
-    /**
-     * Checks, if a the result is a preview
-     *
-     * @return boolean
-     */
-    public function checkPreview(): bool
-    {
-        return ($this->isLoggedIn() == true) && isset($_REQUEST['z']) && $_REQUEST['z'] === 'manprev';
-    }
-
-    /**
-     * check if site is offline
-     *
-     * @return boolean
-     */
-    public function checkSiteStatus(): bool
-    {
-        if ($this->getConfig('site_status')) {
-            return true;
+        $this->setSystemCacheKey('notfound');
+        if (!$noEvent) {
+            // invoke OnPageNotFound event
+            $this->invokeEvent('OnPageNotFound');
         }
+        $url = app('evo.url')->getNotFoundPageId();
 
-        if ($this->isLoggedin('mgr') && $this->hasPermission('access_permissions', 'mgr')) {
-            return true;
-        } // site online
-        // site offline but launched via the manager
-
-        return false; // site is offline
-    }
-
-    /**
-     * @deprecated use UrlProcessor::cleanDocumentIdentifier()
-     */
-    public function cleanDocumentIdentifier($qOrig): string
-    {
-        return app('evo.url')->cleanDocumentIdentifier($qOrig, $this->documentMethod);
+        $this->sendForward($url, 'HTTP/1.0 404 Not Found');
     }
 
     /**
      * @param $id
+     * @param string $responseCode
      *
-     * @return array|mixed|null|string
+     * @return string
      */
-    public function makePageCacheKey($id): mixed
+    public function sendForward($id, string $responseCode = ''): string
     {
-        $hash = $id;
-        $tmp = null;
-        $params = Request::collect()->sortKeys()->toArray();
-        $cacheKey = $this->getSystemCacheKey();
-        if (!empty($cacheKey)) {
-            $hash = $cacheKey;
-        } else {
-            if (!empty($params)) {
-                $hash .= '_' . md5(http_build_query($params));
+        if ($this->forwards <= 0) {
+            $this->getService('ExceptionHandler')->messageQuit("Internal Server Error id=$id");
+            header('HTTP/1.0 500 Internal Server Error');
+            die('<h1>ERROR: Too many forward attempts!</h1><p>The request could not be completed due to too many unsuccessful forward attempts.</p>');
+        }
+        $this->forwards--;
+        $this->documentIdentifier = $id;
+        $this->documentMethod = 'id';
+        if ($responseCode) {
+            header($responseCode);
+        }
+
+        return $this->prepareResponse();
+    }
+
+    /**
+     * @return string
+     */
+    public function prepareResponse(): string
+    {
+        // we now know the method and identifier, let's check the cache
+
+        if ($this->getConfig('enable_cache') == 2 && $this->isLoggedIn()) {
+            $this->setConfig('enable_cache', 0);
+        }
+
+        $this->documentContent = '';
+        if ($this->getConfig('enable_cache')) {
+            $this->documentContent = $this->getDocumentContentFromCache($this->documentIdentifier, true);
+        }
+
+        $this->documentGenerated = 0;
+        $template = false;
+        if ($this->documentContent == '') {
+            // get document object from DB
+            $this->documentObject =
+                $this->getDocumentObjectFromCache($this->documentMethod, $this->documentIdentifier, 'prepareResponse');
+
+            // write the documentName to the object
+            $this->documentName = &$this->documentObject['pagetitle'];
+
+            // check if we should not hit this document
+            if ($this->documentObject['hide_from_tree'] == 1) {
+                $this->setConfig('track_visitors', 0);
+            }
+
+            if ($this->documentObject['deleted'] == 1) {
+                $this->sendErrorPage();
+            } elseif ($this->documentObject['published'] == 0) { // validation routines
+                $this->_sendErrorForUnpubPage();
+            } elseif ($this->documentObject['type'] === 'reference') {
+                $this->_sendRedirectForRefPage($this->documentObject['content']);
+            }
+
+            $template = app('evo.tpl')->getBladeDocumentContent();
+
+            if ($template) {
+                $this->documentObject['cacheable'] = 0;
+                if (isset($this->documentObject['id'])) {
+                    $data = [
+                        'modx' => $this,
+                        'documentObject' => $this->makeDocumentObject($this->documentObject['id']),
+                    ];
+                } else {
+                    $data = [
+                        'modx' => $this,
+                        'documentObject' => [],
+                        'siteContentObject' => [],
+                    ];
+                }
+
+                view()->share($data);
+
+                if ($this->isChunkProcessor('DLTemplate')) {
+                    app('evo.tpl')->getBlade()->share($data);
+                }
+
+                $tpl = view()->make($template, $this->dataForView);
+                $templateCode = $tpl->render();
+            } else {
+                // get the template and start parsing!
+                if (!$this->documentObject['template']) {
+                    $templateCode = '[*content*]';
+                } else { // use blank template
+                    $templateCode = app('evo.tpl')->getTemplateCodeFromDB($this->documentObject['template']);
+                }
+
+                if (str_starts_with($templateCode, '@INCLUDE')) {
+                    $templateCode = $this->atBindInclude($templateCode);
+                }
+            }
+
+            $this->documentContent = &$templateCode;
+
+            // invoke OnLoadWebDocument event
+            $this->invokeEvent('OnLoadWebDocument');
+
+            if (!$template) {
+                // Parse document source
+                $this->documentContent = $this->parseDocumentSource($this->documentContent);
+            }
+
+            $this->documentGenerated = 1;
+        }
+
+        if ($this->getConfig('error_page') == $this->documentIdentifier) {
+            if ($this->getConfig('error_page') != $this->getConfig('site_start')) {
+                header('HTTP/1.0 404 Not Found');
             }
         }
-        $evtOut = $this->invokeEvent("OnMakePageCacheKey", ["hash" => &$hash, "id" => $id, 'params' => $params]);
-        if (is_array($evtOut) && count($evtOut) > 0) {
-            $tmp = array_pop($evtOut);
-        }
 
-        return empty($tmp) ? $hash : $tmp;
+        if ($template) {
+            return $this->outputContent(false, false);
+        } else {
+            register_shutdown_function([& $this, 'postProcess']); // tell PHP to call postProcess when it shuts down
+
+            return $this->outputContent();
+        }
     }
 
     /**
      * @param $id
      * @param bool $loading
      *
-     * @return string
+     * @return string|void
      */
-    public function checkCache($id, $loading = false)
-    {
-        return $this->getDocumentObjectFromCache($id, $loading);
-    }
-
-    /**
-     * @param $key
-     *
-     * @return string
-     */
-    public function getHashFile($key)
-    {
-        return $this->getSiteCachePath('docid_' . $key . '.pageCache.php');
-    }
-
-    /**
-     * Check the cache for a specific document/resource
-     *
-     * @param int $id
-     * @param bool $loading
-     *
-     * @return string
-     */
-    public function getDocumentObjectFromCache($id, $loading = false)
+    public function getDocumentContentFromCache($id, bool $loading = false)
     {
         $key = ($this->getConfig('cache_type') == 2) ? $this->makePageCacheKey($id) : $id;
         if ($loading) {
-            $this->cacheKey = $key;
+            $this->cacheKey = (string) $key;
         }
 
         $cache_path = $this->getHashFile($key);
@@ -685,8 +1312,9 @@ class Evo
 
             return '';
         }
+
         $content = Cache::get($cache_path);
-        if (substr($content, 0, 5) === '<?php') {
+        if (str_starts_with($content, '<?php')) {
             $content = substr($content, strpos($content, '?>') + 2);
         } // remove php header
         $a = explode('<!--__MODxCacheSpliter__-->', $content, 2);
@@ -697,12 +1325,12 @@ class Evo
             // check page security
             if ($this->isFrontend() && $docObj['privateweb'] && isset($docObj['__MODxDocGroups__'])) {
                 $pass = false;
-                $usrGrps = $this->getUserDocGroups();
-                $docGrps = explode(',', $docObj['__MODxDocGroups__']);
+                $usrGroups = $this->getUserDocGroups();
+                $docGroups = explode(',', $docObj['__MODxDocGroups__']);
                 // check is user has access to doc groups
-                if (is_array($usrGrps)) {
-                    foreach ($usrGrps as $k => $v) {
-                        if (!in_array($v, $docGrps)) {
+                if (is_array($usrGroups)) {
+                    foreach ($usrGroups as $v) {
+                        if (!in_array($v, $docGroups)) {
                             continue;
                         }
                         $pass = true;
@@ -713,7 +1341,7 @@ class Evo
                 if (!$pass) {
                     if ($this->getConfig('unauthorized_page')) {
                         // check if file is not public
-                        $documentGroups = DocumentGroup::where('document', $id);
+                        $documentGroups = DocumentGroup::query()->where('document', $id);
                         $total = $documentGroups->count();
                     } else {
                         $total = 0;
@@ -754,353 +1382,514 @@ class Evo
     }
 
     /**
-     * Final processing and output of the document/resource.
+     * @param $key
      *
-     * - runs uncached snippets
-     * - add javascript to <head>
-     * - removes unused placeholders
-     * - converts URL tags [~...~] to URLs
-     *
-     * @param boolean $noEvent Default: false
-     * @param boolean $postParse Default: true
+     * @return string
      */
-    public function outputContent($noEvent = false, $postParse = true)
+    public function getHashFile($key): string
     {
-        $this->documentOutput = $this->documentContent;
+        return $this->getSiteCachePath('docid_' . $key . '.pageCache.php');
+    }
 
-        if ($this->documentGenerated == 1
-            && $this->documentObject['cacheable'] == 1
-            && $this->documentObject['type'] === 'document'
-            && $this->documentObject['published'] == 1
-        ) {
-            if ($this->sjscripts) {
-                $this->documentObject['__MODxSJScripts__'] = $this->sjscripts;
+    /**
+     * @param string $path
+     *
+     * @return string
+     */
+    public function getSiteCachePath(string $path = ''): string
+    {
+        return storage_path('framework/cache/data/' . $path);
+    }
+
+    /**
+     * @param bool $resolveIds
+     *
+     * @return array|mixed|string|void
+     */
+    public function getUserDocGroups(bool $resolveIds = false)
+    {
+        $context = $this->getContext();
+        if (isset($_SESSION[$context . 'Docgroups']) && isset($_SESSION[$context . 'Validated'])) {
+            $dg = $_SESSION[$context . 'Docgroups'];
+            $dgn = $_SESSION[$context . 'DocgrpNames'] ?? false;
+        } else {
+            $dg = '';
+            $dgn = '';
+        }
+
+        if (!$resolveIds) {
+            return $dg;
+        }
+
+        if (is_array($dgn)) {
+            return $dgn;
+        }
+
+        if (is_array($dg)) {
+            // resolve ids to names
+            $dgn = [];
+            $ds = DocumentgroupName::query()
+                ->select('name')
+                ->whereIn('id', $dg)
+                ->get();
+
+            foreach ($ds as $row) {
+                $dgn[] = $row->name;
             }
-            if ($this->jscripts) {
-                $this->documentObject['__MODxJScripts__'] = $this->jscripts;
-            }
+            // cache docgroup names to session
+            $_SESSION[$context . 'DocgrpNames'] = $dgn;
+
+            return $dgn;
         }
+    }
 
-        // check for non-cached snippet output
-        if ($postParse && Str::contains($this->documentOutput, '[!')) {
-            $this->recentUpdate = $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time', 0);
-
-            $this->documentOutput = str_replace('[!', '[[', $this->documentOutput);
-            $this->documentOutput = str_replace('!]', ']]', $this->documentOutput);
-            $this->minParserPasses = 2;
-            // Parse document source
-            $this->documentOutput = $this->parseDocumentSource($this->documentOutput);
-        }
-
-        // Moved from prepareResponse() by sirlancelot
-        // Insert Startup jscripts & CSS scripts into template - template must have a <head> tag
-        if ($js = $this->getRegisteredClientStartupScripts()) {
-            // change to just before closing </head>
-            // $this->documentContent = preg_replace("/(<head[^>]*>)/i", "\\1\n".$js, $this->documentContent);
-            $this->documentOutput = preg_replace("/(<\/head>)/i", $js . "\n\\1", $this->documentOutput);
-        }
-
-        // Insert jscripts & html block into template - template must have a </body> tag
-        if ($js = $this->getRegisteredClientScripts()) {
-            $this->documentOutput = preg_replace("/(<\/body>)/i", $js . "\n\\1", $this->documentOutput);
-        }
-        // End fix by sirlancelot
-        if ($postParse) {
-            $this->documentOutput = $this->cleanUpMODXTags($this->documentOutput);
-
-            $this->documentOutput = $this->rewriteUrls($this->documentOutput);
-        }
-
-        // send out content-type and content-disposition headers
-        if (IN_PARSER_MODE == "true") {
-            $type = !empty($this->documentObject['contentType']) ? $this->documentObject['contentType'] : "text/html";
-            header('Content-Type: ' . $type . '; charset=' . $this->getConfig('modx_charset'));
-            // if (($this->documentIdentifier == $this->config['error_page']) || $redirect_error)
-            //   header('HTTP/1.0 404 Not Found');
-            if (!$this->checkPreview() && $this->documentObject['content_dispo'] == 1) {
-                if ($this->documentObject['alias']) {
-                    $name = $this->documentObject['alias'];
-                } else {
-                    // strip title of special characters
-                    $name = $this->documentObject['pagetitle'];
-                    $name = strip_tags($name);
-                    $name = $this->cleanUpMODXTags($name);
-                    $name = strtolower($name);
-                    $name = preg_replace('/&.+?;/', '', $name); // kill entities
-                    $name = preg_replace('/[^\.%a-z0-9 _-]/', '', $name);
-                    $name = preg_replace('/\s+/', '-', $name);
-                    $name = preg_replace('|-+|', '-', $name);
-                    $name = trim($name, '-');
-                }
-                $header = 'Content-Disposition: attachment; filename=' . $name;
-                header($header);
-            }
-        }
-        $this->setConditional();
-
-        $stats = $this->getTimerStats($this->tstart);
-
-        $out = &$this->documentOutput;
-        if ($postParse && Str::contains($out, '[^')) {
-            $out = str_replace(
-                ['[^q^]', '[^qt^]', '[^p^]', '[^t^]', '[^s^]', '[^m^]'],
-                [
-                    $stats['queries'],
-                    $stats['queryTime'],
-                    $stats['phpTime'],
-                    $stats['totalTime'],
-                    $stats['source'],
-                    $stats['phpMemory'],
-                ],
-                $out
-            );
-        }
-        //$this->documentOutput= $out;
-
-        // invoke OnWebPagePrerender event
+    /**
+     * @param bool $noEvent
+     *
+     * @return string
+     */
+    public function sendUnauthorizedPage(bool $noEvent = false): string
+    {
+        $_REQUEST['refurl'] = $this->documentIdentifier;
+        $this->setSystemCacheKey('unauth');
         if (!$noEvent) {
-            $evtOut = $this->invokeEvent('OnWebPagePrerender', ['documentOutput' => &$this->documentOutput]);
+            $this->invokeEvent('OnPageUnauthorized');
         }
 
-        $this->documentOutput = removeSanitizeSeed($this->documentOutput);
-
-        if ($postParse) {
-            if (Str::contains($this->documentOutput, '\{')) {
-                $this->documentOutput = $this->RecoveryEscapedTags($this->documentOutput);
-            } elseif (Str::contains($this->documentOutput, '\[')) {
-                $this->documentOutput = $this->RecoveryEscapedTags($this->documentOutput);
-            }
-        }
-
-        echo $this->documentOutput;
-
-        if ($this->dumpSQL) {
-            echo $this->queryCode;
-        }
-        if ($this->dumpSnippets) {
-            $sc = '';
-            $tt = 0;
-            foreach ($this->snippetsTime as $s => $v) {
-                $t = $v['time'];
-                $sname = $v['sname'];
-                $sc .= sprintf('%s. %s (%2.2f ms)<br>', $s, $sname, $t); // currentSnippet
-                $tt += $t;
-            }
-            echo sprintf(
-                '<fieldset><legend><b>Snippets</b> (%s / %2.2f ms)</legend>%s</fieldset><br />',
-                count($this->snippetsTime),
-                $tt,
-                $sc
-            );
-            echo $this->snippetsCode;
-        }
-        if ($this->dumpPlugins) {
-            $ps = '';
-            $tt = 0;
-            foreach ($this->pluginsTime as $s => $t) {
-                $ps .= sprintf('%s (%2.2f ms)<br>', $s, $t * 1000);
-                $tt += $t;
-            }
-            echo sprintf(
-                '<fieldset><legend><b>Plugins</b> (%s / %2.2f ms)</legend>%s</fieldset><br />',
-                count($this->pluginsTime),
-                $tt * 1000,
-                $ps
-            );
-            echo $this->pluginsCode;
-        }
+        return $this->sendForward(app('evo.url')->getUnAuthorizedPageId(), 'HTTP/1.1 401 Unauthorized');
     }
 
     /**
-     * @param $contents
-     *
-     * @return mixed
-     */
-    // phpcs:ignore
-    public function RecoveryEscapedTags($contents)
-    {
-        [$sTags, $rTags] = $this->getTagsForEscape();
-
-        return str_replace($rTags, $sTags, $contents);
-    }
-
-    /**
-     * @param string $tags
-     *
-     * @return array[]
-     */
-    public function getTagsForEscape($tags = '{{,}},[[,]],[!,!],[*,*],[(,)],[+,+],[~,~],[^,^]')
-    {
-        $srcTags = explode(',', $tags);
-        $repTags = [];
-        foreach ($srcTags as $tag) {
-            $repTags[] = '\\' . $tag[0] . '\\' . $tag[1];
-        }
-
-        return [$srcTags, $repTags];
-    }
-
-    /**
-     * @param $tstart
+     * @param $method
+     * @param $identifier
+     * @param string|null $isPrepareResponse
      *
      * @return array
      */
-    public function getTimerStats($tstart)
+    public function getDocumentObjectFromCache($method, $identifier, string $isPrepareResponse = null): array
     {
-        $stats = [];
-
-        $stats['totalTime'] = ($this->getMicroTime() - $tstart);
-        $stats['queryTime'] = $this->queryTime;
-        $stats['phpTime'] = $stats['totalTime'] - $stats['queryTime'];
-
-        $stats['queryTime'] = sprintf('%2.4f s', $stats['queryTime']);
-        $stats['totalTime'] = sprintf('%2.4f s', $stats['totalTime']);
-        $stats['phpTime'] = sprintf('%2.4f s', $stats['phpTime']);
-        $stats['source'] = $this->documentGenerated == 1 ? 'database' : 'cache';
-        $stats['queries'] = $this->executedQueries ?? 0;
-        $stats['phpMemory'] = (memory_get_peak_usage(true) / 1024 / 1024) . ' mb';
-
-        return $stats;
-    }
-
-    public function setConditional()
-    {
-        if (!empty($_POST) || (defined('MODX_API_MODE') && MODX_API_MODE) || $this->getLoginUserID('mgr') ||
-            !$this->useConditional || empty($this->recentUpdate)
-        ) {
-            return;
-        }
-        $last_modified = gmdate('D, d M Y H:i:s T', $this->recentUpdate);
-        $etag = md5($last_modified);
-        $HTTP_IF_MODIFIED_SINCE = $_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? false;
-        $HTTP_IF_NONE_MATCH = $_SERVER['HTTP_IF_NONE_MATCH'] ?? false;
-        header('Pragma: no-cache');
-
-        if ($HTTP_IF_MODIFIED_SINCE == $last_modified || Str::contains($HTTP_IF_NONE_MATCH, $etag)) {
-            header('HTTP/1.1 304 Not Modified');
-            header('Content-Length: 0');
-            exit;
-        }
-
-        header('Last-Modified: ' . $last_modified);
-        header("ETag: '" . $etag . "'");
+        return Cache::rememberForever(
+            __FUNCTION__ . $identifier,
+            function () use ($method, $identifier, $isPrepareResponse) {
+                return $this->getDocumentObject($method, $identifier, $isPrepareResponse);
+            }
+        );
     }
 
     /**
+     * @param $method
+     * @param $identifier
+     * @param string|null $isPrepareResponse
+     *
+     * @return array
+     */
+    public function getDocumentObject($method, $identifier, string $isPrepareResponse = null): array
+    {
+        $cacheKey = md5(print_r(func_get_args(), true));
+
+        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
+            return $this->tmpCache[__FUNCTION__][$cacheKey];
+        }
+
+        // allow alias to be full path
+        if ($method === 'alias') {
+            $identifier = app('evo.url')->cleanDocumentIdentifier($identifier);
+            $method = $this->documentMethod;
+        }
+
+        if ($method === 'alias' && $this->getConfig('use_alias_path') &&
+            array_key_exists($identifier, app('evo.url')->documentListing)
+        ) {
+            $method = 'id';
+            $identifier = app('evo.url')->documentListing[$identifier];
+        }
+
+        $out = $this->invokeEvent(
+            'OnBeforeLoadDocumentObject',
+            compact('method', 'identifier')
+        );
+
+        if (is_array($out) && is_array($out[0])) {
+            $documentObject = $out[0];
+        } else {
+            // get document
+            $documentObject = SiteContent::withoutProtected()
+                ->where('site_content.' . $method, $identifier);
+            $documentObject = $documentObject->first();
+            if (is_null($documentObject)) {
+                if ($this->getConfig('unauthorized_page')) {
+                    // method may still be alias, while identifier is not full path alias, e.g. id not found above
+                    if ($method === 'alias') {
+                        $seclimit = DocumentGroup::query()
+                            ->join('site_content')
+                            ->where('document_groups.document', 'sc.id')
+                            ->where('site_content.alias', DB::Raw($identifier))
+                            ->exists();
+                    } else {
+                        $seclimit = DocumentGroup::query()
+                            ->where('document', DB::Raw($identifier))
+                            ->exists();
+                    }
+                    if ($seclimit) {
+                        // match found but not publicly accessible, send the visitor to the unauthorized_page
+                        $this->sendUnauthorizedPage();
+                    } else {
+                        $this->sendErrorPage();
+                    }
+                }
+            }
+            //this is now the document :)
+            $documentObject = $documentObject->toArray();
+            unset($documentObject['document_group'], $documentObject['document']);
+            $documentObject['id'] = $identifier;
+
+            if ($isPrepareResponse === 'prepareResponse') {
+                $this->documentObject = &$documentObject;
+            }
+
+            $out = $this->invokeEvent(
+                'OnLoadDocumentObject',
+                compact('method', 'identifier', 'documentObject')
+            );
+
+            if (is_array($out) && is_array($out[0])) {
+                $documentObject = $out[0];
+            }
+
+            if ($documentObject['template']) {
+                // load TVs and merge with document - Orig by Apodigm - Docvars
+                $tvs = SiteTmplvar::query()
+                    ->select('site_tmplvars.*', 'site_tmplvar_contentvalues.value')
+                    ->join('site_tmplvar_templates', 'site_tmplvar_templates.tmplvarid', '=', 'site_tmplvars.id')
+                    ->leftJoin('site_tmplvar_contentvalues', function ($join) use ($documentObject) {
+                        $join->on('site_tmplvar_contentvalues.tmplvarid', '=', 'site_tmplvars.id');
+                        $join->on('site_tmplvar_contentvalues.contentid', '=', DB::raw((int) $documentObject['id']));
+                    })
+                    ->where('site_tmplvar_templates.templateid', $documentObject['template'])
+                    ->get();
+
+                $tmplvars = [];
+                foreach ($tvs as $tv) {
+                    $row = $tv->toArray();
+                    if ($row['value'] == '') {
+                        $row['value'] = $row['default_text'];
+                    }
+
+                    $tmplvars[$row['name']] = [
+                        $row['name'],
+                        $row['value'],
+                        $row['display'],
+                        $row['display_params'],
+                        $row['type'],
+                    ];
+                }
+                $documentObject = array_merge($documentObject, $tmplvars);
+
+                $documentObject['templatealias'] = SiteTemplate::query()
+                    ->select('templatealias')
+                    ->firstWhere('id', $documentObject['template'])
+                    ->templatealias;
+            }
+            $out = $this->invokeEvent(
+                'OnAfterLoadDocumentObject',
+                compact('method', 'identifier', 'documentObject')
+            );
+
+            if (is_array($out) && array_key_exists(0, $out) !== false && is_array($out[0])) {
+                $documentObject = $out[0];
+            }
+        }
+        $this->tmpCache[__FUNCTION__][$cacheKey] = $documentObject;
+
+        return $documentObject;
+    }
+
+    /**
+     * @param $qOrig
+     *
+     * @return int|string
+     */
+    public function cleanDocumentIdentifier($qOrig): int|string
+    {
+        return app('evo.url')->cleanDocumentIdentifier($qOrig, $this->documentMethod);
+    }
+
+    /**
+     * @return void
+     */
+    public function _sendErrorForUnpubPage(): void
+    {
+        // Can't view unpublished pages !$this->checkPreview()
+        if (!$this->hasPermission('view_unpublished', 'mgr') && !$this->hasPermission('view_unpublished')) {
+            $this->sendErrorPage();
+
+            return;
+        }
+
+        $udperms = new Legacy\Permissions();
+        $udperms->user = $this->getLoginUserID();
+        $udperms->document = $this->documentIdentifier;
+        $udperms->role = $_SESSION['mgrRole'];
+        // Doesn't have access to this document
+        if (!$udperms->checkPermissions()) {
+            $this->sendErrorPage();
+        }
+    }
+
+    /**
+     * @param $url
+     *
+     * @return false|null
+     */
+    public function _sendRedirectForRefPage($url): ?bool
+    {
+        // check whether it's a reference
+        if (preg_match('@^[1-9]\d*$@', $url)) {
+            $url = app('evo.url')->makeUrl($url); // if it's a bare document id
+        } elseif (Str::contains($url, '[~')) {
+            $url = app('evo.url')->rewriteUrls($url); // if it's an internal docid tag, process it
+        }
+
+        return $this->sendRedirect($url, 0, '', 'HTTP/1.0 302 Moved Temporarily');
+    }
+
+    /**
+     * @param $documentSource
+     *
+     * @return mixed
+     */
+    public function rewriteUrls($documentSource): mixed
+    {
+        return app('evo.url')->rewriteUrls($documentSource);
+    }
+
+    /**
+     * @param int $id
+     * @param bool $values
+     *
+     * @return array
+     */
+    public function makeDocumentObject(int $id, bool $values = true): array
+    {
+        if ($id == $this->documentObject['id']) {
+            $documentObject = $this->documentObject;
+            if ($values === true) {
+                foreach ($documentObject as $key => $value) {
+                    if (is_array($value)) {
+                        $documentObject[$key] = $value[1] ?? '';
+                    }
+                }
+            }
+
+            return $documentObject;
+        }
+
+        $documentObject = SiteContent::query()->findOrFail($id)->toArray();
+        if ($documentObject === null) {
+            return [];
+        }
+
+        $rs = DB::table('site_tmplvars as tv')
+            ->select('tv.*', 'tvc.value', 'tv.default_text')
+            ->join('site_tmplvar_templates as tvtpl', 'tvtpl.tmplvarid', '=', 'tv.id')
+            ->leftJoin('site_tmplvar_contentvalues as tvc', function ($join) use ($documentObject) {
+                $join->on('tvc.tmplvarid', '=', 'tv.id');
+                $join->on('tvc.contentid', '=', DB::raw((int) $documentObject['id']));
+            })
+            ->where('tvtpl.templateid', (int) $documentObject['template'])
+            ->get();
+
+        $tmplvars = [];
+        foreach ($rs as $row) {
+            if ($row->value == '') {
+                $row->value = $row->default_text;
+            }
+            $tmplvars[$row->name] = [
+                $row->name,
+                $row->value,
+                $row->display,
+                $row->display_params,
+                $row->type,
+            ];
+        }
+        $documentObject = array_merge($documentObject, $tmplvars);
+        if ($values === true) {
+            foreach ($documentObject as $key => $value) {
+                if (is_array($value)) {
+                    $documentObject[$key] = $value[1] ?? '';
+                }
+            }
+        }
+
+        return $documentObject;
+    }
+
+    /**
+     * @param $processor
+     *
+     * @return bool
+     */
+    public function isChunkProcessor($processor): bool
+    {
+        $value = (string) $this->getConfig('chunk_processor');
+        if (is_object($processor)) {
+            $processor = get_class($processor);
+        }
+
+        return is_scalar($processor) && mb_strtolower($value) === mb_strtolower($processor) &&
+            class_exists($processor, false);
+    }
+
+    /**
+     * @param string $str
+     *
+     * @return false|mixed|string
+     */
+    public function atBindInclude(string $str = ''): mixed
+    {
+        if (!str_starts_with($str, '@INCLUDE')) {
+            return $str;
+        }
+        if (str_contains($str, "\n")) {
+            $str = substr($str, 0, strpos("\n", $str));
+        }
+
+        $str = substr($str, 9);
+        $str = trim($str);
+        $str = str_replace('\\', '/', $str);
+        $str = ltrim($str, '/');
+
+        $tpl_dir = 'assets/templates/';
+
+        if (str_starts_with($str, MODX_MANAGER_PATH)) {
+            return false;
+        }
+
+        if (is_file(MODX_BASE_PATH . $str)) {
+            $file_path = MODX_BASE_PATH . $str;
+        } elseif (is_file(MODX_BASE_PATH . $tpl_dir . $str)) {
+            $file_path = MODX_BASE_PATH . $tpl_dir . $str;
+        } else {
+            return false;
+        }
+
+        if (!$file_path || !is_file($file_path)) {
+            return false;
+        }
+
+        ob_start();
+        $modx = &$this;
+        $result = include $file_path;
+        if ($result === 1) {
+            $result = '';
+        }
+        $content = ob_get_clean();
+        if (!$content && $result) {
+            $content = $result;
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param $source
+     *
+     * @return mixed|string
+     */
+    public function parseDocumentSource($source): mixed
+    {
+        // set the number of times we are to parse the document source
+        $this->minParserPasses = !$this->minParserPasses ? 2 : $this->minParserPasses;
+        $this->maxParserPasses = !$this->maxParserPasses ? 10 : $this->maxParserPasses;
+        $passes = $this->minParserPasses;
+        $st = null;
+
+        for ($i = 0; $i < $passes; $i++) {
+            // get source length if this is the final pass
+            if ($i == ($passes - 1)) {
+                $st = md5($source);
+            }
+            if ($this->dumpSnippets == 1) {
+                $this->snippetsCode .= "<fieldset><legend><b style='color: #821517;'>PARSE PASS '.($i + 1).'</b></legend><p>The following snippets (if any) were parsed during this pass.</p>";
+            }
+
+            // invoke OnParseDocument event
+            $this->documentOutput = $source; // store source code so plugins can
+            $this->invokeEvent('OnParseDocument'); // work on it via $modx->documentOutput
+            $source = $this->documentOutput;
+
+            if ($this->getConfig('enable_at_syntax')) {
+                $source = $this->ignoreCommentedTagsContent($source);
+                $source = $this->mergeConditionalTagsContent($source);
+            }
+
+            $source = $this->mergeSettingsContent($source);
+            $source = $this->mergeDocumentContent($source);
+            $source = $this->mergeChunkContent($source);
+            $source = $this->evalSnippets($source);
+            $source = $this->mergePlaceholderContent($source);
+
+            if ($this->dumpSnippets == 1) {
+                $this->snippetsCode .= '</fieldset><br />';
+            }
+            if ($i == ($passes - 1) && $i < ($this->maxParserPasses - 1)) {
+                // check if source content was changed
+                if ($st != md5($source)) {
+                    $passes++;
+                } // if content change then increase passes because
+            } // we have not yet reached maxParserPasses
+        }
+
+        return $source;
+    }
+
+    /**
+     * @param string $content
+     * @param string $left
+     * @param string $right
+     *
      * @return string
      */
-    public function getSitePublishingFilePath()
+    public function ignoreCommentedTagsContent(
+        string $content,
+        string $left = '<!--@-',
+        string $right = '-@-->'): string
     {
-        return storage_path('framework/cache/data/sitePublishing.idx.php');
-    }
-
-    /**
-     * Checks the publish state of page
-     */
-    public function updatePubStatus()
-    {
-        $cacheRefreshTime = 0;
-        $recent_update = 0;
-        if (file_exists($this->getSitePublishingFilePath())) {
-            @include $this->getSitePublishingFilePath();
-        }
-        $this->recentUpdate = $recent_update;
-
-        $timeNow = $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time');
-        if ($timeNow < $cacheRefreshTime || $cacheRefreshTime == 0) {
-            return;
+        if (!Str::contains($content, $left)) {
+            return $content;
         }
 
-        // now, check for documents that need publishing
-        $field = ['published' => 1, 'publishedon' => $timeNow];
-        $where = "pub_date <= {$timeNow} AND pub_date!=0 AND published=0";
-        $result_pub = Models\SiteContent::query()->select('id')->whereRaw($where)->get();
-        Models\SiteContent::query()->whereRaw($where)->update($field);
-
-        if ($result_pub->count() >= 1) { //Event unPublished doc
-            foreach ($result_pub as $row_pub) {
-                $this->invokeEvent("OnDocUnPublished", [
-                    "docid" => $row_pub->id,
-                ]);
+        $matches = $this->getTagsFromContent($content, $left, $right);
+        if (!empty($matches)) {
+            $addBreakMatches = [];
+            foreach ($matches[0] as $i => $v) {
+                $addBreakMatches[$i] = $v . "\n";
+            }
+            $content = str_replace($addBreakMatches, '', $content);
+            if (Str::contains($content, $left)) {
+                $content = str_replace($matches[0], '', $content);
             }
         }
 
-        // now, check for documents that need un-publishing
-        $field = ['published' => 0, 'publishedon' => 0];
-        $where = "unpub_date <= {$timeNow} AND unpub_date!=0 AND published=1";
-
-        $result_unpub = Models\SiteContent::query()->select('id')->whereRaw($where)->get();
-
-        Models\SiteContent::query()->whereRaw($where)->update($field);
-
-        if ($result_unpub->count() >= 1) { //Event unPublished doc
-            foreach ($result_unpub as $row_unpub) {
-                $this->invokeEvent("OnDocUnPublished", [
-                    "docid" => $row_unpub->id,
-                ]);
-            }
-        }
-
-        $this->recentUpdate = $timeNow;
-
-        // clear the cache
-        $this->clearCache('full');
-    }
-
-    public function checkPublishStatus()
-    {
-        $this->updatePubStatus();
+        return $content;
     }
 
     /**
-     * Final jobs.
-     *
-     * - cache page
-     */
-    public function postProcess()
-    {
-        // if the current document was generated, cache it!
-        $cacheable = ($this->getConfig('enable_cache') && $this->documentObject['cacheable']) ? 1 : 0;
-        if ($cacheable && $this->documentGenerated && $this->documentObject['type'] == 'document' &&
-            $this->documentObject['published']
-        ) {
-            // invoke OnBeforeSaveWebPageCache event
-            $this->invokeEvent("OnBeforeSaveWebPageCache");
-
-            if (!empty($this->cacheKey) && is_scalar($this->cacheKey)) {
-                // get and store document groups inside document object. Document groups will be used to check security on cache pages
-                $docGroups =
-                    DocumentGroup::query()->where('document', $this->documentIdentifier)->pluck('document_group')->toArray();
-                // Attach Document Groups and Scripts
-                if (is_array($docGroups)) {
-                    $this->documentObject['__MODxDocGroups__'] = implode(",", $docGroups);
-                }
-
-                $docObjSerial = serialize($this->documentObject);
-                $cacheContent = $docObjSerial . "<!--__MODxCacheSpliter__-->" . $this->documentContent;
-                $page_cache_path = $this->getHashFile($this->cacheKey);
-                Cache::forever($page_cache_path, "<?php die('Unauthorized access.'); ?>$cacheContent");
-            }
-        }
-
-        // Useful for example to external page counters/stats packages
-        $this->invokeEvent('OnWebPageComplete');
-        // end post processing
-    }
-
-    /**
-     * @param $content
+     * @param string $content
      * @param string $left
      * @param string $right
      *
      * @return array
      */
-    public function getTagsFromContent($content, $left = '[+', $right = '+]')
+    public function getTagsFromContent(string $content, string $left = '[+', string $right = '+]'): array
     {
+        $tags = [];
         $_ = $this->_getTagsFromContent($content, $left, $right);
+
         if (empty($_)) {
             return [];
         }
+
         foreach ($_ as $v) {
             $tags[0][] = "$left$v$right";
             $tags[1][] = $v;
@@ -1110,13 +1899,13 @@ class Evo
     }
 
     /**
-     * @param $content
+     * @param string $content
      * @param string $left
      * @param string $right
      *
      * @return array
      */
-    public function _getTagsFromContent($content, $left = '[+', $right = '+]')
+    public function _getTagsFromContent(string $content, string $left = '[+', string $right = '+]'): array
     {
         if (!Str::contains($content, $left)) {
             return [];
@@ -1190,21 +1979,18 @@ class Evo
 
                     if (!in_array($fetch, $tags)) { // Avoid double Matches
                         $tags[] = $fetch; // Fetch
-                    };
+                    }
                     $fetch = ''; // and reset
                     $lc = 0;
                     $rc = 0;
                 } else {
                     $fetch .= $right;
                 }
-            } else {
-                if (0 < $lc) {
-                    $fetch .= $v;
-                } else {
-                    continue;
-                }
+            } elseif (0 < $lc) {
+                $fetch .= $v;
             }
         }
+
         foreach ($tags as $i => $tag) {
             if (Str::contains($tag, $spacer)) {
                 $tags[$i] = str_replace($spacer, '', $tag);
@@ -1215,15 +2001,472 @@ class Evo
     }
 
     /**
-     * Merge content fields and TVs
+     * @param string $content
+     * @param string $iftag
+     * @param string $elseiftag
+     * @param string $elsetag
+     * @param string $endiftag
      *
-     * @param $content
+     * @return string
+     */
+    public function mergeConditionalTagsContent(
+        string $content,
+        string $iftag = '<@IF:',
+        string $elseiftag = '<@ELSEIF:',
+        string $elsetag = '<@ELSE>',
+        string $endiftag = '<@ENDIF>'
+    ): string {
+        if (Str::contains($content, '@IF')) {
+            $content = $this->_prepareCTag($content, $iftag, $elseiftag, $elsetag, $endiftag);
+        }
+
+        if (!Str::contains($content, $iftag)) {
+            return $content;
+        }
+
+        $sp = '#' . md5('ConditionalTags' . $_SERVER['REQUEST_TIME']) . '#';
+        $content = str_replace(['<?php', '<?=', '<?', '?>'], ["{$sp}b", "{$sp}p", "{$sp}s", "{$sp}e"], $content);
+
+        $pieces = explode('<@IF:', $content);
+        foreach ($pieces as $i => $split) {
+            if ($i === 0) {
+                $content = $split;
+                continue;
+            }
+            [$cmd, $text] = explode('>', $split, 2);
+            $cmd = str_replace("'", "\'", $cmd);
+            $content .= "<?php if(\$this->_parseCTagCMD('" . $cmd . "')): ?>";
+            $content .= $text;
+        }
+        $pieces = explode('<@ELSEIF:', $content);
+        foreach ($pieces as $i => $split) {
+            if ($i === 0) {
+                $content = $split;
+                continue;
+            }
+            [$cmd, $text] = explode('>', $split, 2);
+            $cmd = str_replace("'", "\'", $cmd);
+            $content .= "<?php elseif(\$this->_parseCTagCMD('" . $cmd . "')): ?>";
+            $content .= $text;
+        }
+
+        $content = str_replace(['<@ELSE>', '<@ENDIF>'], ['<?php else:?>', '<?php endif;?>'], $content);
+        ob_start();
+        eval('?>' . $content);
+        $content = ob_get_clean();
+
+        return str_replace(["{$sp}b", "{$sp}p", "{$sp}s", "{$sp}e"], ['<?php', '<?=', '<?', '?>'], $content);
+    }
+
+    /**
+     * @param string $content
+     * @param string $iftag
+     * @param string $elseiftag
+     * @param string $elsetag
+     * @param string $endiftag
+     *
+     * @return string
+     */
+    public function _prepareCTag(
+        string $content,
+        string $iftag = '<@IF:',
+        string $elseiftag = '<@ELSEIF:',
+        string $elsetag = '<@ELSE>',
+        string $endiftag = '<@ENDIF>'
+    ): string {
+        if (Str::contains($content, '<!--@IF ')) {
+            $content = str_replace('<!--@IF ', $iftag, $content);
+        } // for jp
+        if (Str::contains($content, '<!--@IF:')) {
+            $content = str_replace('<!--@IF:', $iftag, $content);
+        }
+        if (!Str::contains($content, $iftag)) {
+            return $content;
+        }
+        if (Str::contains($content, '<!--@ELSEIF:')) {
+            $content = str_replace('<!--@ELSEIF:', $elseiftag, $content);
+        } // for jp
+        if (Str::contains($content, '<!--@ELSE-->')) {
+            $content = str_replace('<!--@ELSE-->', $elsetag, $content);
+        } // for jp
+        if (Str::contains($content, '<!--@ENDIF-->')) {
+            $content = str_replace('<!--@ENDIF-->', $endiftag, $content);
+        } // for jp
+        if (Str::contains($content, '<@ENDIF-->')) {
+            $content = str_replace('<@ENDIF-->', $endiftag, $content);
+        }
+        $tags = [$iftag, $elseiftag, $elsetag, $endiftag];
+
+        return str_ireplace($tags, $tags, $content);
+    }
+
+    /**
+     * @param string $content
+     * @param array|null $ph
+     *
+     * @return string
+     */
+    public function mergeSettingsContent(string $content, array $ph = null): string
+    {
+        if ($this->getConfig('enable_at_syntax')) {
+            if (stripos($content, '<@LITERAL>') !== false) {
+                $content = $this->escapeLiteralTagsContent($content);
+            }
+        }
+
+        if (!Str::contains($content, '[(')) {
+            return $content;
+        }
+
+        if (empty($ph)) {
+            $ph = array_merge(
+                $this->allConfig(),
+                [
+                    'base_url' => MODX_BASE_URL,
+                    'base_path' => MODX_BASE_PATH,
+                    'site_url' => MODX_SITE_URL,
+                    'valid_hostnames' => MODX_SITE_HOSTNAMES,
+                    'site_manager_url' => MODX_MANAGER_URL,
+                    'site_manager_path' => MODX_MANAGER_PATH,
+                ]
+            );
+        }
+
+        $matches = $this->getTagsFromContent($content, '[(', ')]');
+        if (empty($matches)) {
+            return $content;
+        }
+
+        foreach ($matches[1] as $i => $key) {
+            [$key, $modifiers] = $this->splitKeyAndFilter($key);
+
+            if (isset($ph[$key])) {
+                $value = $ph[$key];
+            } else {
+                continue;
+            }
+
+            if ($modifiers !== false) {
+                $value = $this->applyFilter($value, $modifiers, $key);
+            }
+            $s = &$matches[0][$i];
+            if (Str::contains($content, $s)) {
+                $content = str_replace($s, $value, $content);
+            } elseif ($this->debug) {
+                $this->addLog('mergeSettingsContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param string $content
+     * @param string $left
+     * @param string $right
+     *
+     * @return string
+     */
+    public function escapeLiteralTagsContent(
+        string $content,
+        string $left = '<@LITERAL>',
+        string $right = '<@ENDLITERAL>'): string
+    {
+        if (stripos($content, $left) === false) {
+            return $content;
+        }
+
+        $matches = $this->getTagsFromContent($content, $left, $right);
+        if (empty($matches)) {
+            return $content;
+        }
+
+        [$sTags, $rTags] = $this->getTagsForEscape();
+        foreach ($matches[1] as $i => $v) {
+            $v = str_ireplace($sTags, $rTags, $v);
+            $s = &$matches[0][$i];
+            if (Str::contains($content, $s)) {
+                $content = str_replace($s, $v, $content);
+            } elseif ($this->debug) {
+                $this->addLog('ignoreCommentedTagsContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param string $tags
+     *
+     * @return array
+     */
+    public function getTagsForEscape(string $tags = '{{,}},[[,]],[!,!],[*,*],[(,)],[+,+],[~,~],[^,^]'): array
+    {
+        $srcTags = explode(',', $tags);
+        $repTags = [];
+        foreach ($srcTags as $tag) {
+            $repTags[] = '\\' . $tag[0] . '\\' . $tag[1];
+        }
+
+        return [$srcTags, $repTags];
+    }
+
+    /**
+     * @param string $title
+     * @param string $msg
+     * @param int $type
+     *
+     * @return void
+     */
+    public function addLog(string $title = 'no title', string $msg = '', int $type = 1): void
+    {
+        if ($title === '') {
+            $title = 'no title';
+        }
+        if (is_array($msg)) {
+            $msg = '<pre>' . print_r($msg, true) . '</pre>';
+        } elseif ($msg === '') {
+            $msg = $_SERVER['REQUEST_URI'];
+        }
+        $this->logEvent(0, $type, $msg, $title);
+    }
+
+    /**
+     * @param int $evtid
+     * @param int $type
+     * @param string $msg
+     * @param string $source
+     *
+     * @return void
+     */
+    public function logEvent(int $evtid, int $type, string $msg, string $source = 'Parser'): void
+    {
+        if (str_starts_with((string) DB::getConfig('charset'), 'utf8') && extension_loaded('mbstring')) {
+            $esc_source = mb_substr($source, 0, 50, 'UTF-8');
+        } else {
+            $esc_source = substr($source, 0, 50);
+        }
+
+        $LoginUserID = $this->getLoginUserID();
+        if ($LoginUserID == '') {
+            $LoginUserID = 0;
+        }
+
+        // Types: 1 = information, 2 = warning, 3 = error
+        if ($type < 1) {
+            $type = 1;
+        } elseif ($type > 3) {
+            $type = 3;
+        }
+
+        EventLog::query()->insert([
+            'eventid' => $evtid,
+            'type' => $type,
+            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
+            'source' => $esc_source,
+            'description' => $msg,
+            'user' => $LoginUserID,
+            'usertype' => $this->isFrontend() ? 1 : 0,
+        ]);
+
+        $this->invokeEvent('OnLogEvent', [
+            'eventid' => $evtid,
+            'type' => $type,
+            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
+            'source' => $esc_source,
+            'description' => $msg,
+            'user' => $LoginUserID,
+            'usertype' => $this->isFrontend() ? 1 : 0,
+        ]);
+
+        if ($this->getConfig('send_errormail', '0') != '0') {
+            if ($this->getConfig('send_errormail') <= $type) {
+                $this->sendmail([
+                    'subject' => 'Evolution CMS System Error on ' . $this->getConfig('site_name'),
+                    'body' => 'Source: ' . $source .
+                        ' - The details of the error could be seen in the Evolution CMS system events log.',
+                    'type' => 'text',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param array $params
+     * @param string $msg
+     * @param array $files
+     *
+     * @return mixed
+     */
+    public function sendmail(array $params = [], string $msg = '', array $files = []): mixed
+    {
+        $p = [];
+
+        if (is_scalar($params)) {
+            if (!Str::contains($params, '=')) {
+                if (Str::contains($params, '@')) {
+                    $p['to'] = $params;
+                } else {
+                    $p['subject'] = $params;
+                }
+            } else {
+                $params_array = explode(',', $params);
+                foreach ($params_array as $k => $v) {
+                    $k = trim($k);
+                    $v = trim($v);
+                    $p[$k] = $v;
+                }
+            }
+        } else {
+            $p = $params;
+        }
+        if (isset($p['sendto'])) {
+            $p['to'] = $p['sendto'];
+        }
+
+        if (isset($p['to']) && preg_match('@^\d+$@', $p['to'])) {
+            $userinfo = $this->getUserInfo($p['to']);
+            $p['to'] = $userinfo['email'];
+        }
+        if (isset($p['from']) && preg_match('@^\d+$@', $p['from'])) {
+            $userinfo = $this->getUserInfo($p['from']);
+            $p['from'] = $userinfo['email'];
+            $p['fromname'] = $userinfo['username'];
+        }
+        if ($msg === '' && !isset($p['body'])) {
+            $p['body'] = $_SERVER['REQUEST_URI'] . "\n" . $_SERVER['HTTP_USER_AGENT'] . "\n" . $_SERVER['HTTP_REFERER'];
+        } elseif (is_string($msg) && 0 < strlen($msg)) {
+            $p['body'] = $msg;
+        }
+
+        $sendto = !isset($p['to']) ? $this->getConfig('emailsender') : $p['to'];
+        $sendto = explode(',', $sendto);
+        $mail = $this->getMail();
+        foreach ($sendto as $address) {
+            [$name, $address] = $mail->address_split($address);
+            $mail->AddAddress($address, $name);
+        }
+        if (isset($p['cc'])) {
+            $p['cc'] = explode(',', $p['cc']);
+            foreach ($p['cc'] as $address) {
+                [$name, $address] = $mail->address_split($address);
+                $mail->AddCC($address, $name);
+            }
+        }
+        if (isset($p['bcc'])) {
+            $p['bcc'] = explode(',', $p['bcc']);
+            foreach ($p['bcc'] as $address) {
+                [$name, $address] = $mail->address_split($address);
+                $mail->AddBCC($address, $name);
+            }
+        }
+        if (isset($p['from']) && Str::contains($p['from'], '<') && str_ends_with($p['from'], '>')) {
+            [$p['fromname'], $p['from']] = $mail->address_split($p['from']);
+        }
+        $mail->setFrom(
+            $p['from'] ?? $this->getConfig('emailsender'),
+            $p['fromname'] ?? $this->getConfig('site_name')
+        );
+        $mail->Subject = (!isset($p['subject'])) ? $this->getConfig('emailsubject') : $p['subject'];
+        $mail->Body = $p['body'];
+        if (isset($p['type']) && $p['type'] === 'text') {
+            $mail->IsHTML(false);
+        }
+        if (!is_array($files)) {
+            $files = [];
+        }
+        foreach ($files as $name => $path) {
+            if (!is_file($path) || !is_readable($path)) {
+                $path = MODX_BASE_PATH . $path;
+            }
+            if (is_file($path) && is_readable($path)) {
+                if (is_numeric($name)) {
+                    $mail->AddAttachment($path);
+                } else {
+                    $mail->AddAttachment($path, $name);
+                }
+            }
+        }
+
+        return $mail->send();
+    }
+
+    /**
+     * @param $uid
+     *
+     * @return array|bool
+     */
+    public function getUserInfo($uid): bool|array
+    {
+        if (isset($this->tmpCache[__FUNCTION__][$uid])) {
+            return $this->tmpCache[__FUNCTION__][$uid];
+        }
+
+        $row = User::query()
+            ->select('users.username', 'users.password', 'user_attributes.*')
+            ->join('user_attributes', 'users.id', '=', 'user_attributes.internalKey')
+            ->where('users.id', $uid)
+            ->first();
+
+        if (is_null($row)) {
+            return $this->tmpCache[__FUNCTION__][$uid] = false;
+        }
+
+        $row = $row->toArray();
+
+        if (!isset($row['usertype']) || !$row['usertype']) {
+            $row['usertype'] = 'manager';
+        }
+
+        $this->tmpCache[__FUNCTION__][$uid] = $row;
+
+        return $row;
+    }
+
+    /**
+     * @param $key
+     *
+     * @return array
+     */
+    public function splitKeyAndFilter($key): array
+    {
+        if ($this->getConfig('enable_filter') && str_contains($key, ':') && stripos($key, '@FILE') !== 0) {
+            [$key, $modifiers] = explode(':', $key, 2);
+        } else {
+            $modifiers = false;
+        }
+
+        $key = trim($key);
+        if ($modifiers !== false) {
+            $modifiers = trim($modifiers);
+        }
+
+        return [$key, $modifiers];
+    }
+
+    /**
+     * @param string $value
+     * @param string|null $modifiers
+     * @param string $key
+     *
+     * @return string
+     */
+    public function applyFilter(string $value = '', string $modifiers = null, string $key = ''): string
+    {
+        if (!$modifiers || $modifiers === 'raw') {
+            return $value;
+        }
+
+        return $this->getModifiers()->phxFilter($key, $value, trim($modifiers));
+    }
+
+    /**
+     * @param string $content
      * @param bool $ph
      *
      * @return string
-     * @internal param string $template
      */
-    public function mergeDocumentContent($content, $ph = false)
+    public function mergeDocumentContent(string $content, bool $ph = false): string
     {
         if ($this->getConfig('enable_at_syntax')) {
             if (stripos($content, '<@LITERAL>') !== false) {
@@ -1256,7 +2499,7 @@ class Evo
             if (Str::contains($key, '[+')) {
                 continue;
             } // Allow chunk {{chunk?&param=`xxx`}} with [*tv_name_[+param+]*] as content
-            if (strpos($key, '#') === 0) {
+            if (str_starts_with($key, '#')) {
                 $key = substr($key, 1);
             } // remove # for QuickEdit format
 
@@ -1269,9 +2512,9 @@ class Evo
 
             // if(!isset($ph[$key]) && !$context) continue; // #1218 TVs/PHs will not be rendered if custom_meta_title is not assigned to template like [*custom_meta_title:ne:then=`[*custom_meta_title*]`:else=`[*pagetitle*]`*]
             if ($context) {
-                $value = $this->_contextValue("{$key}@{$context}", $this->documentObject['parent']);
+                $value = $this->_contextValue("$key@$context", $this->documentObject['parent']);
             } else {
-                $value = isset($ph[$key]) ? $ph[$key] : '';
+                $value = $ph[$key] ?? '';
             }
 
             if (is_array($value)) {
@@ -1294,12 +2537,12 @@ class Evo
     }
 
     /**
-     * @param $key
-     * @param bool|int $parent
+     * @param string $key
+     * @param int|null $parent
      *
-     * @return bool|mixed|string
+     * @return false|mixed|string
      */
-    public function _contextValue($key, $parent = false)
+    public function _contextValue(string $key, int $parent = null): mixed
     {
         if (preg_match('/@\d+\/u/', $key)) {
             $key = str_replace(['@', '/u'], ['@u(', ')'], $key);
@@ -1412,76 +2655,378 @@ class Evo
     }
 
     /**
-     * Merge system settings
+     * @param int $id
+     * @param int $top
      *
-     * @param $content
-     * @param bool|array $ph
-     *
-     * @return string
-     * @internal param string $template
+     * @return mixed
      */
-    public function mergeSettingsContent($content, $ph = false)
+    public function getUltimateParentId(int $id, int $top = 0): int
     {
-        if ($this->getConfig('enable_at_syntax')) {
-            if (stripos($content, '<@LITERAL>') !== false) {
-                $content = $this->escapeLiteralTagsContent($content);
+        $i = 0;
+        while ($id && $i < 20) {
+            if ($top == app('evo.url')->aliasListing[$id]['parent']) {
+                break;
+            }
+            $id = app('evo.url')->aliasListing[$id]['parent'];
+            $i++;
+        }
+
+        return $id;
+    }
+
+    /**
+     * @param int $id
+     * @param string $sort
+     * @param string $dir
+     * @param string $fields
+     * @param bool $checkAccess
+     *
+     * @return mixed
+     */
+    public function getActiveChildren(
+        int $id = 0,
+        string $sort = 'menuindex',
+        string $dir = 'ASC',
+        string $fields = 'id, pagetitle, description, parent, alias, menutitle',
+        bool $checkAccess = true): mixed
+    {
+        $cacheKey = md5(print_r(func_get_args(), true));
+        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
+            return $this->tmpCache[__FUNCTION__][$cacheKey];
+        }
+
+        // modify field names to use sc. table reference
+        $fields = array_filter(array_map('trim', explode(',', $fields)));
+        foreach ($fields as $key => $value) {
+            if (stristr($value, '.') === false) {
+                $fields[$key] = 'site_content.' . $value;
             }
         }
-        if (!Str::contains($content, '[(')) {
-            return $content;
+        $content = SiteContent::query()
+            ->select($fields)
+            ->where('site_content.parent', $id)
+            ->active()
+            ->groupBy('site_content.id');
+        if ($sort != '') {
+            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
+            $content = $content->orderBy($sort, $dir);
+        }
+        if ($checkAccess) {
+            $content->withoutProtected();
+        }
+        // build query
+        $resourceArray = $content->get()->toArray();
+        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
+
+        return $resourceArray;
+    }
+
+    /**
+     * @param string $field
+     * @param int $docid
+     *
+     * @return false|mixed
+     */
+    public function getField(string $field = 'content', int $docid = 0): mixed
+    {
+        if (empty($docid) && isset($this->documentIdentifier)) {
+            $docid = $this->documentIdentifier;
+        } elseif (!preg_match('@^\d+$@', (string) $docid)) {
+            $docid = app('evo.url')->getIdFromAlias($docid);
         }
 
-        if (empty($ph)) {
-            $ph = array_merge(
-                $this->allConfig(),
-                [
-                    'base_url' => MODX_BASE_URL,
-                    'base_path' => MODX_BASE_PATH,
-                    'site_url' => MODX_SITE_URL,
-                    'valid_hostnames' => MODX_SITE_HOSTNAMES,
-                    'site_manager_url' => MODX_MANAGER_URL,
-                    'site_manager_path' => MODX_MANAGER_PATH,
-                ]
-            );
+        if (empty($docid)) {
+            return false;
         }
 
-        $matches = $this->getTagsFromContent($content, '[(', ')]');
-        if (empty($matches)) {
-            return $content;
+        $cacheKey = md5(print_r(func_get_args(), true));
+        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
+            return $this->tmpCache[__FUNCTION__][$cacheKey];
         }
 
-        foreach ($matches[1] as $i => $key) {
-            [$key, $modifiers] = $this->splitKeyAndFilter($key);
-
-            if (isset($ph[$key])) {
-                $value = $ph[$key];
-            } else {
-                continue;
-            }
-
-            if ($modifiers !== false) {
-                $value = $this->applyFilter($value, $modifiers, $key);
-            }
-            $s = &$matches[0][$i];
-            if (Str::contains($content, $s)) {
-                $content = str_replace($s, $value, $content);
-            } elseif ($this->debug) {
-                $this->addLog('mergeSettingsContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
-            }
+        $doc = $this->getDocumentObject('id', $docid);
+        if (is_array($doc[$field])) {
+            $tvs = $this->getTemplateVarOutput([$field], $docid);
+            $content = $tvs[$field];
+        } else {
+            $content = $doc[$field];
         }
+
+        $this->tmpCache[__FUNCTION__][$cacheKey] = $content;
 
         return $content;
     }
 
     /**
-     * Merge chunks
+     * @param array $idnames
+     * @param int|null $docid
+     * @param int $published
+     * @param string $sep
      *
+     * @return array|false
+     */
+    public function getTemplateVarOutput(
+        array $idnames = [],
+        int $docid = null,
+        int $published = 1,
+        string $sep = ''): bool|array
+    {
+        if (!$idnames) {
+            return false;
+        }
+
+        $output = [];
+        $vars = $idnames;
+
+        if ((int) $docid > 0) {
+            $docid = (int) $docid;
+        } else {
+            $docid = $this->documentIdentifier;
+        }
+        // remove sort for speed
+        $result = $this->getTemplateVars($vars, '*', $docid, $published, '', '');
+
+        if (!$result) {
+            return false;
+        }
+
+        foreach ($result as $iValue) {
+            $row = $iValue;
+
+            if (!isset($row['id']) or !$row['id']) {
+                $output[$row['name']] = $row['value'];
+            } else {
+                $output[$row['name']] = getTVDisplayFormat(
+                    $row['name'],
+                    $row['value'],
+                    $row['display'],
+                    $row['display_params'],
+                    $row['type'],
+                    $docid,
+                    $sep
+                );
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * @param array $idnames
+     * @param string $fields
+     * @param int $docid
+     * @param int $published
+     * @param string $sort
+     * @param string $dir
+     * @param bool $checkAccess
+     *
+     * @return false|mixed|array
+     */
+    public function getTemplateVars(
+        array $idnames = [],
+        string $fields = '*',
+        int $docid = 0,
+        int $published = 1,
+        string $sort = 'rank',
+        string $dir = 'ASC',
+        bool $checkAccess = true): mixed
+    {
+        static $cached = [];
+        $cacheKey = md5(print_r(func_get_args(), true));
+        if (isset($cached[$cacheKey])) {
+            return $cached[$cacheKey];
+        }
+        $cached[$cacheKey] = false;
+
+        if (!$idnames) {
+            return false;
+        }
+
+        // get document record
+        if (empty($docid)) {
+            $docid = $this->documentIdentifier;
+            $docRow = $this->documentObject;
+        } else {
+            $docRow = $this->getDocument($docid, '*', $published, 0, $checkAccess);
+
+            if (!$docRow) {
+                $cached[$cacheKey] = false;
+
+                return false;
+            }
+        }
+        $table = $this->getDatabase()->getFullTableName('site_tmplvars');
+        // get user defined template variables
+        if (!empty($fields) && (is_scalar($fields) || is_array($fields))) {
+            if (is_scalar($fields)) {
+                $fields = explode(',', $fields);
+            }
+            $fields = array_filter(array_map('trim', $fields), function ($value) {
+                return $value !== 'value';
+            });
+        } else {
+            $fields = ['*'];
+        }
+        $sort = ($sort == '')
+            ? '' : $table . '.' . implode(',' . $table . '.', array_filter(array_map('trim', explode(',', $sort))));
+
+        if ($idnames[0] === '*') {
+            $query = $table . '.id<>0';
+        } else {
+            $query =
+                (is_numeric($idnames[0]) ? $table . '.id' : $table . '.name') . " IN ('" . implode("','", $idnames) .
+                "')";
+        }
+
+        $rs = SiteTmplvar::query()
+            ->select($fields)
+            ->selectRaw(
+                " IF(" . $this->getDatabase()->getConfig('prefix') . "site_tmplvar_contentvalues.value != '', " .
+                $this->getDatabase()->getConfig('prefix') . "site_tmplvar_contentvalues.value, " .
+                $this->getDatabase()->getConfig('prefix') . "site_tmplvars.default_text) as value"
+            )
+            ->join('site_tmplvar_templates', 'site_tmplvar_templates.tmplvarid', '=', 'site_tmplvars.id')
+            ->leftJoin('site_tmplvar_contentvalues', function ($join) use ($docid) {
+                $join->on('site_tmplvar_contentvalues.tmplvarid', '=', 'site_tmplvars.id');
+                $join->on('site_tmplvar_contentvalues.contentid', '=', DB::raw($docid));
+            })
+            ->whereRaw(
+                $query . " AND " . $this->getDatabase()->getConfig('prefix') . "site_tmplvar_templates.templateid = '" .
+                $docRow['template'] . "'"
+            );
+        if ($sort != '') {
+            $rs = $rs->orderByRaw($sort);
+        }
+        $rs = $rs->get();
+
+        $result = $rs->toArray();
+
+        if (is_array($docRow)) {
+            ksort($docRow);
+
+            foreach ($docRow as $name => $value) {
+                if ($idnames[0] === '*' || in_array($name, $idnames)) {
+                    $result[] = compact('name', 'value');
+                }
+            }
+        }
+
+        $cached[$cacheKey] = $result;
+
+        return $result;
+    }
+
+    /**
+     * @param int $id
+     * @param string $fields
+     * @param int $published
+     * @param int $deleted
+     * @param bool $checkAccess
+     *
+     * @return false|mixed
+     */
+    public function getDocument(
+        int $id = 0,
+        string $fields = '*',
+        int $published = 1,
+        int $deleted = 0,
+        bool $checkAccess = true): mixed
+    {
+        if ($id == 0) {
+            return false;
+        }
+
+        $docs = $this->getDocuments([$id], $published, $deleted, $fields, '', '', '', 1, $checkAccess);
+
+        return $docs[0] ?? false;
+    }
+
+    /**
+     * @param array $ids
+     * @param int $published
+     * @param int $deleted
+     * @param string $fields
+     * @param string $where
+     * @param string $sort
+     * @param string $dir
+     * @param int $limit
+     * @param bool $checkAccess
+     *
+     * @return array
+     */
+    public function getDocuments(
+        array $ids = [],
+        int $published = 1,
+        int $deleted = 0,
+        string $fields = '*',
+        string $where = '',
+        string $sort = 'menuindex',
+        string $dir = 'ASC',
+        int $limit = 0,
+        bool $checkAccess = true
+    ): array {
+        $cacheKey = md5(print_r(func_get_args(), true));
+        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
+            return $this->tmpCache[__FUNCTION__][$cacheKey];
+        }
+
+        $documentChildren = SiteContent::withTrashed()->whereIn('site_content.id', $ids);
+        if ($published) {
+            $documentChildren = $documentChildren->where('site_content.published', $published);
+        }
+        if ($deleted) {
+            $documentChildren = $documentChildren->where('site_content.deleted', $deleted);
+        }
+
+        if (is_string($where) && $where != '') {
+            $documentChildren = $documentChildren->whereRaw($where);
+        } elseif (is_array($where)) {
+            $documentChildren = $documentChildren->where($where);
+        }
+
+        $fields = array_filter(array_map('trim', explode(',', $fields)));
+        foreach ($fields as $key => $value) {
+            if (stristr($value, '.') === false) {
+                $fields[$key] = 'site_content.' . $value;
+            }
+        }
+        $documentChildren = $documentChildren->select($fields);
+
+        // modify field names to use sc. table reference
+        if ($sort != '') {
+            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
+            $documentChildren = $documentChildren->orderBy($sort, $dir);
+        }
+
+        if ($checkAccess) {
+            $documentChildren->withoutProtected();
+        }
+
+        if ($limit) {
+            $documentChildren = $documentChildren->take($limit);
+        }
+        $resourceArray = $documentChildren->get()->toArray();
+
+        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
+
+        return $resourceArray;
+    }
+
+    /**
+     * @return Legacy\Database
+     */
+    public function getDatabase(): Legacy\Database
+    {
+        return app('evo.db');
+    }
+
+    /**
      * @param string $content
-     * @param bool|array $ph
+     * @param array|null $ph
      *
      * @return string
      */
-    public function mergeChunkContent($content, $ph = false)
+    public function mergeChunkContent(string $content, array $ph = null): string
     {
         if ($this->getConfig('enable_at_syntax')) {
             if (Str::contains($content, '{{ ')) {
@@ -1545,475 +3090,229 @@ class Evo
     }
 
     /**
-     * Merge placeholder values
+     * @param $call
      *
-     * @param string $content
-     * @param bool|array $ph
-     *
-     * @return string
+     * @return array
      */
-    public function mergePlaceholderContent($content, $ph = false)
+    private function _split_snip_call($call): array
     {
-        if ($this->getConfig('enable_at_syntax')) {
-            if (stripos($content, '<@LITERAL>') !== false) {
-                $content = $this->escapeLiteralTagsContent($content);
-            }
-        }
-        if (!Str::contains($content, '[+')) {
-            return $content;
+        $spacer = md5('dummy');
+        if (Str::contains($call, ']]>')) {
+            $call = str_replace(']]>', "]$spacer]>", $call);
         }
 
-        if (empty($ph)) {
-            $ph = $this->placeholders;
-        }
+        $splitPosition = $this->_getSplitPosition($call);
 
-        if ($this->getConfig('enable_at_syntax')) {
-            $content = $this->mergeConditionalTagsContent($content);
-        }
-
-        $content = $this->mergeDocumentContent($content);
-        $content = $this->mergeSettingsContent($content);
-        $matches = $this->getTagsFromContent($content, '[+', '+]');
-        if (empty($matches)) {
-            return $content;
-        }
-        foreach ($matches[1] as $i => $key) {
-            [$key, $modifiers] = $this->splitKeyAndFilter($key);
-
-            if (isset($ph[$key])) {
-                $value = $ph[$key];
-            } elseif ($key === 'phx') {
-                $value = '';
-            } else {
-                continue;
-            }
-
-            if ($modifiers !== false) {
-                $modifiers = $this->mergePlaceholderContent($modifiers);
-                $value = $this->applyFilter($value, $modifiers, $key);
-            }
-            $s = &$matches[0][$i];
-            if (Str::contains($content, $s)) {
-                $content = str_replace($s, $value, $content);
-            } elseif ($this->debug) {
-                $this->addLog('mergePlaceholderContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
-            }
-        }
-
-        return $content;
-    }
-
-    /**
-     * @param $content
-     * @param string $iftag
-     * @param string $elseiftag
-     * @param string $elsetag
-     * @param string $endiftag
-     *
-     * @return mixed|string
-     */
-    public function mergeConditionalTagsContent(
-        $content,
-        $iftag = '<@IF:',
-        $elseiftag = '<@ELSEIF:',
-        $elsetag = '<@ELSE>',
-        $endiftag = '<@ENDIF>'
-    ) {
-        if (Str::contains($content, '@IF')) {
-            $content = $this->_prepareCTag($content, $iftag, $elseiftag, $elsetag, $endiftag);
-        }
-
-        if (!Str::contains($content, $iftag)) {
-            return $content;
-        }
-
-        $sp = '#' . md5('ConditionalTags' . $_SERVER['REQUEST_TIME']) . '#';
-        $content = str_replace(['<?php', '<?=', '<?', '?>'], ["{$sp}b", "{$sp}p", "{$sp}s", "{$sp}e"], $content);
-
-        $pieces = explode('<@IF:', $content);
-        foreach ($pieces as $i => $split) {
-            if ($i === 0) {
-                $content = $split;
-                continue;
-            }
-            [$cmd, $text] = explode('>', $split, 2);
-            $cmd = str_replace("'", "\'", $cmd);
-            $content .= "<?php if(\$this->_parseCTagCMD('" . $cmd . "')): ?>";
-            $content .= $text;
-        }
-        $pieces = explode('<@ELSEIF:', $content);
-        foreach ($pieces as $i => $split) {
-            if ($i === 0) {
-                $content = $split;
-                continue;
-            }
-            [$cmd, $text] = explode('>', $split, 2);
-            $cmd = str_replace("'", "\'", $cmd);
-            $content .= "<?php elseif(\$this->_parseCTagCMD('" . $cmd . "')): ?>";
-            $content .= $text;
-        }
-
-        $content = str_replace(['<@ELSE>', '<@ENDIF>'], ['<?php else:?>', '<?php endif;?>'], $content);
-        ob_start();
-        eval('?>' . $content);
-        $content = ob_get_clean();
-        $content = str_replace(["{$sp}b", "{$sp}p", "{$sp}s", "{$sp}e"], ['<?php', '<?=', '<?', '?>'], $content);
-
-        return $content;
-    }
-
-    /**
-     * @param $content
-     * @param string $iftag
-     * @param string $elseiftag
-     * @param string $elsetag
-     * @param string $endiftag
-     *
-     * @return mixed
-     */
-    public function _prepareCTag(
-        $content,
-        $iftag = '<@IF:',
-        $elseiftag = '<@ELSEIF:',
-        $elsetag = '<@ELSE>',
-        $endiftag = '<@ENDIF>'
-    ) {
-        if (Str::contains($content, '<!--@IF ')) {
-            $content = str_replace('<!--@IF ', $iftag, $content);
-        } // for jp
-        if (Str::contains($content, '<!--@IF:')) {
-            $content = str_replace('<!--@IF:', $iftag, $content);
-        }
-        if (!Str::contains($content, $iftag)) {
-            return $content;
-        }
-        if (Str::contains($content, '<!--@ELSEIF:')) {
-            $content = str_replace('<!--@ELSEIF:', $elseiftag, $content);
-        } // for jp
-        if (Str::contains($content, '<!--@ELSE-->')) {
-            $content = str_replace('<!--@ELSE-->', $elsetag, $content);
-        } // for jp
-        if (Str::contains($content, '<!--@ENDIF-->')) {
-            $content = str_replace('<!--@ENDIF-->', $endiftag, $content);
-        } // for jp
-        if (Str::contains($content, '<@ENDIF-->')) {
-            $content = str_replace('<@ENDIF-->', $endiftag, $content);
-        }
-        $tags = [$iftag, $elseiftag, $elsetag, $endiftag];
-
-        return str_ireplace($tags, $tags, $content);
-    }
-
-    /**
-     * @return string
-     */
-    public function getSystemCacheKey(): string
-    {
-        return $this->systemCacheKey;
-    }
-
-    /**
-     * @param string $systemCacheKey
-     */
-    public function setSystemCacheKey(string $systemCacheKey): void
-    {
-        $this->systemCacheKey = $systemCacheKey;
-    }
-
-    /**
-     * @param $cmd
-     *
-     * @return mixed|string
-     */
-    private function _parseCTagCMD($cmd)
-    {
-        $cmd = trim($cmd);
-        $reverse = strpos($cmd, '!') === 0 ? true : false;
-        if ($reverse) {
-            $cmd = ltrim($cmd, '!');
-        }
-        if (Str::contains($cmd, '[!')) {
-            $cmd = str_replace(['[!', '!]'], ['[[', ']]'], $cmd);
-        }
-        $safe = 0;
-        while ($safe < 20) {
-            $bt = md5($cmd);
-            if (Str::contains($cmd, '[*')) {
-                $cmd = $this->mergeDocumentContent($cmd);
-            }
-            if (Str::contains($cmd, '[(')) {
-                $cmd = $this->mergeSettingsContent($cmd);
-            }
-            if (Str::contains($cmd, '{{')) {
-                $cmd = $this->mergeChunkContent($cmd);
-            }
-            if (Str::contains($cmd, '[[')) {
-                $cmd = $this->evalSnippets($cmd);
-            }
-            if (Str::contains($cmd, '[+') && !Str::contains($cmd, '[[')) {
-                $cmd = $this->mergePlaceholderContent($cmd);
-            }
-            if ($bt === md5($cmd)) {
-                break;
-            }
-            $safe++;
-        }
-        $cmd = ltrim($cmd);
-        $cmd = rtrim($cmd, '-');
-        $cmd = str_ireplace([' and ', ' or '], ['&&', '||'], $cmd);
-
-        if (!preg_match('@^\d*$@', $cmd) && preg_match('@^[0-9<= \-\+\*/\(\)%!&|]*$@', $cmd)) {
-            $cmd = eval("return {$cmd};");
+        if ($splitPosition !== false) {
+            $name = substr($call, 0, $splitPosition);
+            $params = substr($call, $splitPosition + 1);
         } else {
-            $_ = explode(',', '[*,[(,{{,[[,[!,[+');
-            foreach ($_ as $left) {
-                if (Str::contains($cmd, $left)) {
-                    $cmd = 0;
-                    break;
+            $name = $call;
+            $params = '';
+        }
+
+        $snip['name'] = trim($name);
+        if (Str::contains($params, $spacer)) {
+            $params = str_replace("]$spacer]>", ']]>', $params);
+        }
+        $snip['params'] = ltrim($params, "?& \t\n");
+
+        return $snip;
+    }
+
+    /**
+     * @param $str
+     *
+     * @return bool|int
+     */
+    public function _getSplitPosition($str): bool|int
+    {
+        $closeOpt = false;
+        $maybePos = false;
+        $inFilter = false;
+        $pos = false;
+        $total = strlen($str);
+        for ($i = 0; $i < $total; $i++) {
+            $c = substr($str, $i, 1);
+            $cc = substr($str, $i, 2);
+            if (!$inFilter) {
+                if ($c === ':') {
+                    $inFilter = true;
+                } elseif ($c === '?') {
+                    $pos = $i;
+                } elseif ($c === ' ') {
+                    $maybePos = $i;
+                } elseif ($c === '&' && $maybePos) {
+                    $pos = $maybePos;
+                } elseif ($c === "\n") {
+                    $pos = $i;
+                } else {
+                    $pos = false;
+                }
+            } else {
+                if ($cc == $closeOpt) {
+                    $closeOpt = false;
+                } elseif ($c == $closeOpt) {
+                    $closeOpt = false;
+                } elseif ($closeOpt) {
+                    continue;
+                } elseif ($cc === "('") {
+                    $closeOpt = "')";
+                } elseif ($cc === '("') {
+                    $closeOpt = '")';
+                } elseif ($cc === '(`') {
+                    $closeOpt = '`)';
+                } elseif ($c === '(') {
+                    $closeOpt = ')';
+                } elseif ($c === '?') {
+                    $pos = $i;
+                } elseif ($c === ' ' && !Str::contains($str, '?')) {
+                    $pos = $i;
+                } else {
+                    $pos = false;
                 }
             }
-        }
-        $cmd = trim($cmd);
-        if (!preg_match('@^\d+$@', $cmd)) {
-            $cmd = empty($cmd) ? 0 : 1;
-        } elseif ($cmd <= 0) {
-            $cmd = 0;
-        }
-
-        if ($reverse) {
-            $cmd = !$cmd;
-        }
-
-        return $cmd;
-    }
-
-    /**
-     * Remove Comment-Tags from output like <!--@- Comment -@-->
-     *
-     * @param $content
-     * @param string $left
-     * @param string $right
-     *
-     * @return mixed
-     */
-    public function ignoreCommentedTagsContent($content, $left = '<!--@-', $right = '-@-->')
-    {
-        if (!Str::contains($content, $left)) {
-            return $content;
-        }
-
-        $matches = $this->getTagsFromContent($content, $left, $right);
-        if (!empty($matches)) {
-            $addBreakMatches = [];
-            foreach ($matches[0] as $i => $v) {
-                $addBreakMatches[$i] = $v . "\n";
-            }
-            $content = str_replace($addBreakMatches, '', $content);
-            if (Str::contains($content, $left)) {
-                $content = str_replace($matches[0], '', $content);
+            if ($pos) {
+                break;
             }
         }
 
-        return $content;
+        return $pos;
     }
 
     /**
-     * @param $content
-     * @param string $left
-     * @param string $right
+     * @param string $string
      *
-     * @return mixed
+     * @return array|void
      */
-    public function escapeLiteralTagsContent($content, $left = '<@LITERAL>', $right = '<@ENDLITERAL>')
+    public function getParamsFromString(string $string = '')
     {
-        if (stripos($content, $left) === false) {
-            return $content;
+        if (empty($string)) {
+            return [];
         }
 
-        $matches = $this->getTagsFromContent($content, $left, $right);
-        if (empty($matches)) {
-            return $content;
+        if (Str::contains($string, '&_PHX_INTERNAL_')) {
+            $string = str_replace(['&_PHX_INTERNAL_091_&', '&_PHX_INTERNAL_093_&'], ['[', ']'], $string);
         }
 
-        [$sTags, $rTags] = $this->getTagsForEscape();
-        foreach ($matches[1] as $i => $v) {
-            $v = str_ireplace($sTags, $rTags, $v);
-            $s = &$matches[0][$i];
-            if (Str::contains($content, $s)) {
-                $content = str_replace($s, $v, $content);
-            } elseif ($this->debug) {
-                $this->addLog('ignoreCommentedTagsContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
+        $_ = $this->documentOutput;
+        $this->documentOutput = $string;
+        $this->invokeEvent('OnBeforeParseParams');
+        $string = $this->documentOutput;
+        $this->documentOutput = $_;
+
+        $params = [];
+        $_tmp = $string;
+        $_tmp = ltrim($_tmp, '?&');
+        $temp_params = [];
+        $key = '';
+        $value = null;
+        while ($_tmp !== '') {
+            $bt = $_tmp;
+            $char = substr($_tmp, 0, 1);
+            $_tmp = substr($_tmp, 1);
+
+            if ($char === '=') {
+                $_tmp = trim($_tmp);
+                $delim = substr($_tmp, 0, 1);
+                if (in_array($delim, ['"', "'", '`'])) {
+                    [$null, $value, $_tmp] = explode($delim, $_tmp, 3);
+                    unset($null);
+
+                    if (str_starts_with(trim($_tmp), '//')) {
+                        $_tmp = strstr(trim($_tmp), "\n");
+                    }
+                    $i = 0;
+                    while ($delim === '`' && !str_starts_with(trim($_tmp), '&') && 1 < substr_count($_tmp, '`')) {
+                        [$inner, $outer, $_tmp] = explode('`', $_tmp, 3);
+                        $value .= "`$inner`$outer";
+                        $i++;
+                        if (100 < $i) {
+                            exit('The nest of values are hard to read. Please use three different quotes.');
+                        }
+                    }
+                    if ($i && $delim === '`') {
+                        $value = rtrim($value, '`');
+                    }
+                } elseif (Str::contains($_tmp, '&')) {
+                    [$value, $_tmp] = explode('&', $_tmp, 2);
+                    $value = trim($value);
+                } else {
+                    $value = $_tmp;
+                    $_tmp = '';
+                }
+            } elseif ($char === '&') {
+                if (trim($key) !== '') {
+                    $value = '1';
+                } else {
+                    continue;
+                }
+            } elseif ($_tmp === '') {
+                $key .= $char;
+                $value = '1';
+            } elseif ($key !== '' || trim($char) !== '') {
+                $key .= $char;
+            }
+
+            if (isset($value)) {
+                if (Str::contains($key, 'amp;')) {
+                    $key = str_replace('amp;', '', $key);
+                }
+                $key = trim($key);
+                if (Str::contains($value, '[!')) {
+                    $value = str_replace(['[!', '!]'], ['[[', ']]'], $value);
+                }
+                $value = $this->mergeDocumentContent($value);
+                $value = $this->mergeSettingsContent($value);
+                $value = $this->mergeChunkContent($value);
+                $value = $this->evalSnippets($value);
+                if (!str_starts_with($value, '@CODE:')) {
+                    $value = $this->mergePlaceholderContent($value);
+                }
+
+                $temp_params[][$key] = $value;
+
+                $key = '';
+                $value = null;
+
+                $_tmp = ltrim($_tmp, " ,\t");
+                if (str_starts_with($_tmp, '//')) {
+                    $_tmp = strstr($_tmp, "\n");
+                }
+            }
+
+            if ($_tmp === $bt) {
+                $key = trim($key);
+                if ($key !== '') {
+                    $temp_params[][$key] = '';
+                }
+                break;
             }
         }
 
-        return $content;
-    }
-
-    /**
-     * Detect PHP error according to Evolution CMS error level
-     *
-     * @param integer $error PHP error level
-     *
-     * @return boolean Error detected
-     */
-    public function detectError($error)
-    {
-        $detected = false;
-        if ($this->getConfig('error_reporting') === 199 && $error) {
-            $detected = true;
-        } elseif ($this->getConfig('error_reporting') === 99 && ($error & ~E_USER_DEPRECATED)) {
-            $detected = true;
-        } elseif ($this->getConfig('error_reporting') === 2 && ($error & ~E_NOTICE & ~E_USER_DEPRECATED)) {
-            $detected = true;
-        } elseif ($this->getConfig('error_reporting') === 1 && ($error & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT)) {
-            $detected = true;
-        }
-
-        return $detected;
-    }
-
-    /**
-     * Run a plugin
-     *
-     * @param string $pluginCode Code to run
-     * @param array $params
-     */
-    public function evalPlugin($pluginCode, $params)
-    {
-        $modx = &$this;
-        if (!is_object($modx->event)) {
-            $modx->event = new \stdClass();
-        }
-
-        $modx->event->params = &$params; // store params inside event object
-
-        if (is_array($params)) {
-            extract($params, EXTR_SKIP);
-        }
-        /* if uncomment incorrect work plugin, cant understend where use this code and for what?
-        // This code will avoid further execution of plugins in case they cause a fatal-error. clearCache() will delete those locks to allow execution of locked plugins again.
-        // Related to https://github.com/modxcms/evolution/issues/1130
-        $lock_file_path = MODX_BASE_PATH . 'assets/cache/lock_' . str_replace(' ','-',strtolower($this->event->activePlugin)) . '.pageCache.php';
-        if($this->isBackend()) {
-        if(is_file($lock_file_path)) {
-        $msg = sprintf("Plugin parse error, Temporarily disabled '%s'.", $this->event->activePlugin);
-        $this->logEvent(0, 3, $msg, $msg);
-        return;
-        }
-        elseif(stripos($this->event->activePlugin,'ElementsInTree')===false) touch($lock_file_path);
-        }*/
-        ob_start();
-        eval($pluginCode);
-        $msg = ob_get_clean();
-        // When reached here, no fatal error occured so the lock should be removed.
-        /*if(is_file($lock_file_path)) unlink($lock_file_path);*/
-        $error_info = error_get_last();
-
-        if ((0 < $this->getConfig('error_reporting')) && $msg && $error_info !== null &&
-            $this->detectError($error_info['type'])
-        ) {
-            $msg = ($msg === false) ? 'ob_get_contents() error' : $msg;
-            $this->getService('ExceptionHandler')->messageQuit(
-                'PHP Parse Error',
-                '',
-                true,
-                $error_info['type'],
-                $error_info['file'],
-                'Plugin',
-                $error_info['message'],
-                $error_info['line'],
-                $msg
-            );
-            if ($this->isBackend()) {
-                $this->event->alert(
-                    'An error occurred while loading. Please see the event log for more information.<p>' . $msg . '</p>'
-                );
+        foreach ($temp_params as $p) {
+            $k = key($p);
+            if (str_ends_with($k, '[]')) {
+                $k = substr($k, 0, -2);
+                $params[$k][] = current($p);
+            } elseif (Str::contains($k, '[') && str_ends_with($k, ']')) {
+                [$k, $subk] = explode('[', $k, 2);
+                $subk = substr($subk, 0, -1);
+                $params[$k][$subk] = current($p);
+            } else {
+                $params[$k] = current($p);
             }
-        } else {
-            echo $msg;
         }
-        unset($modx->event->params);
+
+        return $params;
     }
 
     /**
-     * Run a snippet
-     *
-     * @param $phpcode
-     * @param array $params
+     * @param string $content
      *
      * @return string
-     * @internal param string $snippet Code to run
      */
-    public function evalSnippet($phpcode, $params)
-    {
-        $modx = &$this;
-        /*
-        if(isset($params) && is_array($params)) {
-        foreach($params as $k=>$v) {
-        $v = strtolower($v);
-        if($v==='false')    $params[$k] = false;
-        elseif($v==='true') $params[$k] = true;
-        }
-        }*/
-        if (!is_object($modx->event)) {
-            $modx->event = new \stdClass();
-        }
-        $modx->event->params = &$params; // store params inside event object
-        if (is_array($params)) {
-            extract($params, EXTR_SKIP);
-        }
-        ob_start();
-        if (is_scalar($phpcode) && Str::contains($phpcode, ';')) {
-            if (str_starts_with($phpcode, '<?php')) {
-                $phpcode = substr($phpcode, 5);
-            }
-            $return = eval($phpcode);
-        } elseif (!empty($phpcode) && !is_bool($phpcode)) {
-            $return = call_user_func_array($phpcode, [$params]);
-        } else {
-            $return = '';
-        }
-        $echo = ob_get_clean();
-        $error_info = error_get_last();
-        if ((0 < $this->getConfig('error_reporting')) && $error_info !== null &&
-            $this->detectError($error_info['type'])
-        ) {
-            $echo = ($echo === false) ? 'ob_get_contents() error' : $echo;
-            $this->getService('ExceptionHandler')->messageQuit(
-                'PHP Parse Error',
-                '',
-                true,
-                $error_info['type'],
-                $error_info['file'],
-                'Snippet',
-                $error_info['message'],
-                $error_info['line'],
-                $echo
-            );
-            if ($this->isBackend()) {
-                $this->event->alert(
-                    'An error occurred while loading. Please see the event log for more information' .
-                    '<p>' . $echo . $return . '</p>'
-                );
-            }
-        }
-        unset($modx->event->params);
-        if (is_array($return) || is_object($return)) {
-            return $return;
-        }
-
-        return $echo . $return;
-    }
-
-    /**
-     * Run snippets as per the tags in $documentSource and replace the tags with the returned values.
-     *
-     * @param $content
-     *
-     * @return string
-     * @internal param string $documentSource
-     */
-    public function evalSnippets($content)
+    public function evalSnippets(string $content): string
     {
         if (!Str::contains($content, '[[')) {
             return $content;
@@ -2070,7 +3369,7 @@ class Evo
      *
      * @return mixed|string
      */
-    public function _getSGVar($value)
+    public function _getSGVar($value): mixed
     {
         // Get super globals
         $key = $value;
@@ -2091,9 +3390,9 @@ class Evo
             }
         }
         if (Str::contains($key, '[')) {
-            $value = $key ? eval("return {$key};") : '';
-        } elseif (0 < eval("return count({$key});")) {
-            $value = eval("return print_r({$key},true);");
+            $value = $key ? eval("return $key;") : '';
+        } elseif (0 < eval("return count($key);")) {
+            $value = eval("return print_r($key,true);");
         } else {
             $value = '';
         }
@@ -2107,10 +3406,9 @@ class Evo
     /**
      * @param $piece
      *
-     * @return null|string
+     * @return string|array|null
      */
-    // phpcs:ignore
-    private function _get_snip_result($piece)
+    private function _get_snip_result($piece): string|array|null
     {
         if (ltrim($piece) !== $piece) {
             return '';
@@ -2168,231 +3466,11 @@ class Evo
     }
 
     /**
-     * @param string $string
+     * @param $snip_name
      *
      * @return array
      */
-    public function getParamsFromString($string = '')
-    {
-        if (empty($string)) {
-            return [];
-        }
-
-        if (Str::contains($string, '&_PHX_INTERNAL_')) {
-            $string = str_replace(['&_PHX_INTERNAL_091_&', '&_PHX_INTERNAL_093_&'], ['[', ']'], $string);
-        }
-
-        $_ = $this->documentOutput;
-        $this->documentOutput = $string;
-        $this->invokeEvent('OnBeforeParseParams');
-        $string = $this->documentOutput;
-        $this->documentOutput = $_;
-
-        $_tmp = $string;
-        $_tmp = ltrim($_tmp, '?&');
-        $temp_params = [];
-        $key = '';
-        $value = null;
-        while ($_tmp !== '') {
-            $bt = $_tmp;
-            $char = substr($_tmp, 0, 1);
-            $_tmp = substr($_tmp, 1);
-
-            if ($char === '=') {
-                $_tmp = trim($_tmp);
-                $delim = substr($_tmp, 0, 1);
-                if (in_array($delim, ['"', "'", '`'])) {
-                    $null = null;
-                    //list(, $value, $_tmp)
-                    [$null, $value, $_tmp] = explode($delim, $_tmp, 3);
-                    unset($null);
-
-                    if (strpos(trim($_tmp), '//') === 0) {
-                        $_tmp = strstr(trim($_tmp), "\n");
-                    }
-                    $i = 0;
-                    while ($delim === '`' && substr(trim($_tmp), 0, 1) !== '&' && 1 < substr_count($_tmp, '`')) {
-                        [$inner, $outer, $_tmp] = explode('`', $_tmp, 3);
-                        $value .= "`{$inner}`{$outer}";
-                        $i++;
-                        if (100 < $i) {
-                            exit('The nest of values are hard to read. Please use three different quotes.');
-                        }
-                    }
-                    if ($i && $delim === '`') {
-                        $value = rtrim($value, '`');
-                    }
-                } elseif (Str::contains($_tmp, '&')) {
-                    [$value, $_tmp] = explode('&', $_tmp, 2);
-                    $value = trim($value);
-                } else {
-                    $value = $_tmp;
-                    $_tmp = '';
-                }
-            } elseif ($char === '&') {
-                if (trim($key) !== '') {
-                    $value = '1';
-                } else {
-                    continue;
-                }
-            } elseif ($_tmp === '') {
-                $key .= $char;
-                $value = '1';
-            } elseif ($key !== '' || trim($char) !== '') {
-                $key .= $char;
-            }
-
-            if (isset($value) && $value !== null) {
-                if (Str::contains($key, 'amp;')) {
-                    $key = str_replace('amp;', '', $key);
-                }
-                $key = trim($key);
-                if (Str::contains($value, '[!')) {
-                    $value = str_replace(['[!', '!]'], ['[[', ']]'], $value);
-                }
-                $value = $this->mergeDocumentContent($value);
-                $value = $this->mergeSettingsContent($value);
-                $value = $this->mergeChunkContent($value);
-                $value = $this->evalSnippets($value);
-                if (strpos($value, '@CODE:') !== 0) {
-                    $value = $this->mergePlaceholderContent($value);
-                }
-
-                $temp_params[][$key] = $value;
-
-                $key = '';
-                $value = null;
-
-                $_tmp = ltrim($_tmp, " ,\t");
-                if (strpos($_tmp, '//') === 0) {
-                    $_tmp = strstr($_tmp, "\n");
-                }
-            }
-
-            if ($_tmp === $bt) {
-                $key = trim($key);
-                if ($key !== '') {
-                    $temp_params[][$key] = '';
-                }
-                break;
-            }
-        }
-
-        foreach ($temp_params as $p) {
-            $k = key($p);
-            if (substr($k, -2) === '[]') {
-                $k = substr($k, 0, -2);
-                $params[$k][] = current($p);
-            } elseif (Str::contains($k, '[') && substr($k, -1) === ']') {
-                [$k, $subk] = explode('[', $k, 2);
-                $subk = substr($subk, 0, -1);
-                $params[$k][$subk] = current($p);
-            } else {
-                $params[$k] = current($p);
-            }
-        }
-
-        return $params;
-    }
-
-    /**
-     * @param $str
-     *
-     * @return bool|int
-     */
-    public function _getSplitPosition($str)
-    {
-        $closeOpt = false;
-        $maybePos = false;
-        $inFilter = false;
-        $pos = false;
-        $total = strlen($str);
-        for ($i = 0; $i < $total; $i++) {
-            $c = substr($str, $i, 1);
-            $cc = substr($str, $i, 2);
-            if (!$inFilter) {
-                if ($c === ':') {
-                    $inFilter = true;
-                } elseif ($c === '?') {
-                    $pos = $i;
-                } elseif ($c === ' ') {
-                    $maybePos = $i;
-                } elseif ($c === '&' && $maybePos) {
-                    $pos = $maybePos;
-                } elseif ($c === "\n") {
-                    $pos = $i;
-                } else {
-                    $pos = false;
-                }
-            } else {
-                if ($cc == $closeOpt) {
-                    $closeOpt = false;
-                } elseif ($c == $closeOpt) {
-                    $closeOpt = false;
-                } elseif ($closeOpt) {
-                    continue;
-                } elseif ($cc === "('") {
-                    $closeOpt = "')";
-                } elseif ($cc === '("') {
-                    $closeOpt = '")';
-                } elseif ($cc === '(`') {
-                    $closeOpt = '`)';
-                } elseif ($c === '(') {
-                    $closeOpt = ')';
-                } elseif ($c === '?') {
-                    $pos = $i;
-                } elseif ($c === ' ' && !Str::contains($str, '?')) {
-                    $pos = $i;
-                } else {
-                    $pos = false;
-                }
-            }
-            if ($pos) {
-                break;
-            }
-        }
-
-        return $pos;
-    }
-
-    /**
-     * @param $call
-     *
-     * @return mixed
-     */
-    // phpcs:ignore
-    private function _split_snip_call($call)
-    {
-        $spacer = md5('dummy');
-        if (Str::contains($call, ']]>')) {
-            $call = str_replace(']]>', "]{$spacer}]>", $call);
-        }
-
-        $splitPosition = $this->_getSplitPosition($call);
-
-        if ($splitPosition !== false) {
-            $name = substr($call, 0, $splitPosition);
-            $params = substr($call, $splitPosition + 1);
-        } else {
-            $name = $call;
-            $params = '';
-        }
-
-        $snip['name'] = trim($name);
-        if (Str::contains($params, $spacer)) {
-            $params = str_replace("]{$spacer}]>", ']]>', $params);
-        }
-        $snip['params'] = ltrim($params, "?& \t\n");
-
-        return $snip;
-    }
-
-    /**
-     * @param $snip_name
-     *
-     * @return mixed
-     */
-    public function getSnippetObject($snip_name)
+    public function getSnippetObject($snip_name): array
     {
         if (array_key_exists($snip_name, $this->snippetCache)) {
             $snippetObject['name'] = $snip_name;
@@ -2403,7 +3481,7 @@ class Evo
                 }
                 $snippetObject['properties'] = $this->snippetCache["{$snip_name}Props"];
             }
-        } elseif (strpos($snip_name, '@') === 0 && isset($this->pluginEvent[substr($snip_name, 1)])) {
+        } elseif (str_starts_with($snip_name, '@') && isset($this->pluginEvent[substr($snip_name, 1)])) {
             $snippetObject['name'] = substr($snip_name, 1);
             $snippetObject['content'] =
                 '$rs=$this->invokeEvent("' . $snippetObject['name'] . '",$params);echo trim(implode("",$rs));';
@@ -2419,20 +3497,27 @@ class Evo
         return $snippetObject;
     }
 
+    /**
+     * @param $snip_name
+     *
+     * @return array
+     */
     public function getSnippetFromDatabase($snip_name): array
     {
         $snippetObject = [];
 
-        /** @var \Illuminate\Database\Eloquent\Collection $snippetModelCollection */
-        $snippetModelCollection = Models\SiteSnippet::where('name', '=', $snip_name)
+        /** @var Collection $snippetModelCollection */
+        $snippetModelCollection = SiteSnippet::query()
+            ->where('name', '=', $snip_name)
             ->where('disabled', '=', 0)
             ->get();
+
         if ($snippetModelCollection->count() > 1) {
             exit('Error $modx->getSnippetObject()' . $snip_name);
         }
 
         if ($snippetModelCollection->count() === 1) {
-            /** @var Models\SiteSnippet $snippetModel */
+            /** @var SiteSnippet $snippetModel */
             $snippetModel = $snippetModelCollection->first();
             $snip_content = $snippetModel->snippet;
             $snip_prop = $snippetModel->properties;
@@ -2454,2028 +3539,84 @@ class Evo
     }
 
     /**
-     * @deprecated use UrlProcessor::toAlias()
-     */
-    public function toAlias($text)
-    {
-        return app('evo.url')->toAlias($text);
-    }
-
-    /**
-     * @deprecated use UrlProcessor::makeFriendlyURL()
-     */
-    public function makeFriendlyURL($pre, $suff, $alias, $isfolder = 0, $id = 0)
-    {
-        return app('evo.url')->makeFriendlyURL($pre, $suff, $alias, (bool) $isfolder, (int) $id);
-    }
-
-    /**
-     * @deprecated use UrlProcessor::rewriteUrls()
-     */
-    public function rewriteUrls($documentSource)
-    {
-        return app('evo.url')->rewriteUrls($documentSource);
-    }
-
-    public function sendStrictURI()
-    {
-        $url = app('evo.url')->strictURI((string) $this->q, (int) $this->documentIdentifier);
-
-        if ($url !== null) {
-            $this->sendRedirect($url, 0, 'REDIRECT_HEADER', 'HTTP/1.0 301 Moved Permanently');
-        }
-    }
-
-    /**
-     * Get all db fields and TVs for a document/resource
+     * @param string $phpcode
+     * @param array $params
      *
-     * @param string $method
-     * @param mixed $identifier
-     * @param bool $isPrepareResponse
-     *
-     * @return array
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
+     * @return array|string
      */
-    public function getDocumentObject($method, $identifier, $isPrepareResponse = false)
+    public function evalSnippet(string $phpcode, array $params): array|string
     {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
+        $modx = &$this;
+        /*
+        if(isset($params) && is_array($params)) {
+        foreach($params as $k=>$v) {
+        $v = strtolower($v);
+        if($v==='false')    $params[$k] = false;
+        elseif($v==='true') $params[$k] = true;
         }
-
-        // allow alias to be full path
-        if ($method === 'alias') {
-            $identifier = app('evo.url')->cleanDocumentIdentifier($identifier);
-            $method = $this->documentMethod;
+        }*/
+        if (!is_object($modx->event)) {
+            $modx->event = new stdClass();
         }
-        if ($method === 'alias' && (bool) $this->getConfig('use_alias_path') &&
-            array_key_exists($identifier, app('evo.url')->documentListing)
+        $modx->event->params = &$params; // store params inside event object
+        if (is_array($params)) {
+            extract($params, EXTR_SKIP);
+        }
+        ob_start();
+        if (Str::contains($phpcode, ';')) {
+            if (str_starts_with($phpcode, '<?php')) {
+                $phpcode = substr($phpcode, 5);
+            }
+            $return = eval($phpcode);
+        } elseif (!empty($phpcode)) {
+            $return = call_user_func_array($phpcode, [$params]);
+        } else {
+            $return = '';
+        }
+        $echo = ob_get_clean();
+        $error_info = error_get_last();
+        if ((0 < $this->getConfig('error_reporting')) && $error_info !== null &&
+            $this->detectError($error_info['type'])
         ) {
-            $method = 'id';
-            $identifier = app('evo.url')->documentListing[$identifier];
-        }
-
-        $out = $this->invokeEvent(
-            'OnBeforeLoadDocumentObject',
-            compact('method', 'identifier')
-        );
-
-        if (is_array($out) && is_array($out[0])) {
-            $documentObject = $out[0];
-        } else {
-            // get document
-            $documentObject = SiteContent::withoutProtected()
-                ->where('site_content.' . $method, $identifier);
-            $documentObject = $documentObject->first();
-            if (is_null($documentObject)) {
-                $seclimit = 0;
-                if ($this->getConfig('unauthorized_page')) {
-                    // method may still be alias, while identifier is not full path alias, e.g. id not found above
-                    if ($method === 'alias') {
-                        $seclimit = DocumentGroup::query()
-                            ->join('site_content')
-                            ->where('document_groups.document', 'sc.id')
-                            ->where('site_content.alias', DB::Raw($identifier))
-                            ->exists();
-                    } else {
-                        $seclimit = DocumentGroup::query()
-                            ->where('document', DB::Raw($identifier))
-                            ->exists();
-                    }
-                    if ($seclimit) {
-                        // match found but not publicly accessible, send the visitor to the unauthorized_page
-                        $this->sendUnauthorizedPage();
-                    } else {
-                        $this->sendErrorPage();
-                    }
-                }
-            }
-            //this is now the document :)
-            $documentObject = $documentObject->toArray();
-            unset($documentObject['document_group'], $documentObject['document']);
-            $documentObject['id'] = $identifier;
-
-            if ($isPrepareResponse === 'prepareResponse') {
-                $this->documentObject = &$documentObject;
-            }
-
-            $out = $this->invokeEvent(
-                'OnLoadDocumentObject',
-                compact('method', 'identifier', 'documentObject')
+            $echo = ($echo === false) ? 'ob_get_contents() error' : $echo;
+            $this->getService('ExceptionHandler')->messageQuit(
+                'PHP Parse Error',
+                '',
+                true,
+                $error_info['type'],
+                $error_info['file'],
+                'Snippet',
+                $error_info['message'],
+                $error_info['line'],
+                $echo
             );
-
-            if (is_array($out) && is_array($out[0])) {
-                $documentObject = $out[0];
-            }
-
-            if ($documentObject['template']) {
-                // load TVs and merge with document - Orig by Apodigm - Docvars
-                $tvs = SiteTmplvar::query()->select('site_tmplvars.*', 'site_tmplvar_contentvalues.value')
-                    ->join('site_tmplvar_templates', 'site_tmplvar_templates.tmplvarid', '=', 'site_tmplvars.id')
-                    ->leftJoin('site_tmplvar_contentvalues', function ($join) use ($documentObject) {
-                        $join->on('site_tmplvar_contentvalues.tmplvarid', '=', 'site_tmplvars.id');
-                        $join->on('site_tmplvar_contentvalues.contentid', '=', DB::raw((int) $documentObject['id']));
-                    })->where('site_tmplvar_templates.templateid', $documentObject['template'])->get();
-
-                $tmplvars = [];
-                foreach ($tvs as $tv) {
-                    $row = $tv->toArray();
-                    if ($row['value'] == '') {
-                        $row['value'] = $row['default_text'];
-                    }
-
-                    $tmplvars[$row['name']] = [
-                        $row['name'],
-                        $row['value'],
-                        $row['display'],
-                        $row['display_params'],
-                        $row['type'],
-                    ];
-                }
-                $documentObject = array_merge($documentObject, $tmplvars);
-
-                $documentObject['templatealias'] =
-                    SiteTemplate::select('templatealias')->where('id', $documentObject['template'])->first(
-                    )->templatealias;
-            }
-            $out = $this->invokeEvent(
-                'OnAfterLoadDocumentObject',
-                compact('method', 'identifier', 'documentObject')
-            );
-
-            if (is_array($out) && array_key_exists(0, $out) !== false && is_array($out[0])) {
-                $documentObject = $out[0];
+            if ($this->isBackend()) {
+                $this->event->alert(
+                    'An error occurred while loading. Please see the event log for more information' .
+                    '<p>' . $echo . $return . '</p>'
+                );
             }
         }
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $documentObject;
-
-        return $documentObject;
-    }
-
-    public function makeDocumentObject($id, $values = true)
-    {
-        if (\is_array($this->documentObject) && $id === $this->documentObject['id']) {
-            $documentObject = $this->documentObject;
-            if ($values === true) {
-                foreach ($documentObject as $key => $value) {
-                    if (\is_array($value)) {
-                        $documentObject[$key] = $value[1] ?? '';
-                    }
-                }
-            }
-
-            return $documentObject;
+        unset($modx->event->params);
+        if (is_array($return) || is_object($return)) {
+            return $return;
         }
 
-        $documentObject = Models\SiteContent::findOrFail((int) $id)->toArray();
-        if ($documentObject === null) {
-            return [];
-        }
-
-        $rs = DB::table('site_tmplvars as tv')
-            ->select('tv.*', 'tvc.value', 'tv.default_text')
-            ->join('site_tmplvar_templates as tvtpl', 'tvtpl.tmplvarid', '=', 'tv.id')
-            ->leftJoin('site_tmplvar_contentvalues as tvc', function ($join) use ($documentObject) {
-                $join->on('tvc.tmplvarid', '=', 'tv.id');
-                $join->on('tvc.contentid', '=', DB::raw((int) $documentObject['id']));
-            })->where('tvtpl.templateid', (int) $documentObject['template'])->get();
-
-        $tmplvars = [];
-        foreach ($rs as $row) {
-            if ($row->value == '') {
-                $row->value = $row->default_text;
-            }
-            $tmplvars[$row->name] = [
-                $row->name,
-                $row->value,
-                $row->display,
-                $row->display_params,
-                $row->type,
-            ];
-        }
-        $documentObject = array_merge($documentObject, $tmplvars);
-        if ($values === true) {
-            foreach ($documentObject as $key => $value) {
-                if (\is_array($value)) {
-                    $documentObject[$key] = $value[1] ?? '';
-                }
-            }
-        }
-
-        return $documentObject;
+        return $echo . $return;
     }
 
     /**
-     * Parse a source string.
+     * @param $snippetName
+     * @param array $params
+     * @param int|null $cacheTime
+     * @param string|null $cacheKey
      *
-     * Handles most Evolution CMS tags. Exceptions include:
-     *   - uncached snippet tags [!...!]
-     *   - URL tags [~...~]
-     *
-     * @param string $source
-     *
-     * @return string
+     * @return array|mixed|string
      */
-    public function parseDocumentSource($source)
+    public function runSnippet($snippetName, array $params = [], int $cacheTime = null, string $cacheKey = null): mixed
     {
-        // set the number of times we are to parse the document source
-        $this->minParserPasses = !$this->minParserPasses ? 2 : $this->minParserPasses;
-        $this->maxParserPasses = !$this->maxParserPasses ? 10 : $this->maxParserPasses;
+        $arrPlaceholderCheck = [];
 
-        $passes = $this->minParserPasses;
-        for ($i = 0; $i < $passes; $i++) {
-            // get source length if this is the final pass
-            if ($i == ($passes - 1)) {
-                $st = md5($source);
-            }
-            if ($this->dumpSnippets == 1) {
-                $this->snippetsCode .= "<fieldset><legend><b style='color: #821517;'>PARSE PASS '.($i + 1).'</b></legend><p>The following snippets (if any) were parsed during this pass.</p>";
-            }
-
-            // invoke OnParseDocument event
-            $this->documentOutput = $source; // store source code so plugins can
-            $this->invokeEvent('OnParseDocument'); // work on it via $modx->documentOutput
-            $source = $this->documentOutput;
-
-            if ($this->getConfig('enable_at_syntax')) {
-                $source = $this->ignoreCommentedTagsContent($source);
-                $source = $this->mergeConditionalTagsContent($source);
-            }
-
-            $source = $this->mergeSettingsContent($source);
-            $source = $this->mergeDocumentContent($source);
-            $source = $this->mergeChunkContent($source);
-            $source = $this->evalSnippets($source);
-            $source = $this->mergePlaceholderContent($source);
-
-            if ($this->dumpSnippets == 1) {
-                $this->snippetsCode .= '</fieldset><br />';
-            }
-            if ($i == ($passes - 1) && $i < ($this->maxParserPasses - 1)) {
-                // check if source content was changed
-                if ($st != md5($source)) {
-                    $passes++;
-                } // if content change then increase passes because
-            } // we have not yet reached maxParserPasses
-        }
-
-        return $source;
-    }
-
-    public function setRouterMiddleware()
-    {
-        $middleware = array_merge(
-            config('app.middleware.global', []),
-            config('middleware.global', [])
-        );
-
-        $priority = config('middleware.priority');
-
-        if (is_array($priority) && count($priority)) {
-            $this->router->middlewarePriority = $priority;
-        }
-
-        $this->router->middlewareGroup('web', $middleware);
-
-        $aliases = array_merge(
-            config('app.middleware.aliases', []),
-            config('middleware.aliases', [])
-        );
-
-        foreach ($aliases as $key => $class) {
-            $this->router->aliasMiddleware($key, $class);
-        }
-    }
-
-    /**
-     * Starts the parsing operations.
-     *
-     * - connects to the db
-     * - gets the settings (including system_settings)
-     * - gets the document/resource identifier as in the query string
-     * - finally calls prepareResponse()
-     */
-    public function executeParser()
-    {
-        if (app()->runningInConsole()) {
-            throw new \RuntimeException('Call DocumentParser::executeParser on CLI mode');
-        }
-
-        $this->initialize();
-
-        $this->_IIS_furl_fix(); // IIS friendly url fix
-
-        // check site settings
-        if ($this->checkSiteStatus()) {
-            // make sure the cache doesn't need updating
-            $this->updatePubStatus();
-
-            // find out which document we need to display
-            $this->documentMethod = Request::path() == '/' ? 'id' : 'alias';
-            $this->documentIdentifier = $this->getDocumentIdentifier($this->documentMethod);
-        } else {
-            header('HTTP/1.0 503 Service Unavailable');
-            $this->setSystemCacheKey('unavailable');
-            if (!$this->config['site_unavailable_page']) {
-                // display offline message
-                $this->documentContent = $this->getConfig('site_unavailable_message');
-                $this->outputContent();
-                exit; // stop processing here, as the site's offline
-            }
-
-            // setup offline page document settings
-            $this->documentMethod = 'id';
-            $this->documentIdentifier = $this->getConfig('site_unavailable_page');
-        }
-
-        if ($this->documentMethod !== 'alias') {
-            app('evo.tpl')->setTemplatePath('views/');
-
-            //$this->_fixURI();
-
-            // invoke OnWebPageInit event
-            $this->invokeEvent('OnWebPageInit');
-
-            // invoke OnLogPageView event
-            if ($this->getConfig('track_visitors')) {
-                $this->invokeEvent('OnLogPageHit');
-            }
-
-            if ($this->getConfig('seostrict')) {
-                $this->sendStrictURI();
-            }
-
-            $this->prepareResponse();
-
-            return;
-        }
-
-        $this->documentIdentifier = $this->cleanDocumentIdentifier($this->documentIdentifier);
-
-        if ((bool) $this->getConfig('friendly_alias_urls') == 1) {
-            // Check use_alias_path and check if $this->virtualDir is set to anything, then parse the path
-            if ((bool) $this->getConfig('use_alias_path') == 1) {
-                // use_alias_path = Use Friendly URL alias path = YES
-                $virtualDir = app('evo.url')->virtualDir;
-                $alias = ($virtualDir != '' ? $virtualDir . '/' : '') . $this->documentIdentifier;
-
-                if (isset(app('evo.url')->documentListing[$alias])) {
-                    $this->documentIdentifier = app('evo.url')->documentListing[$alias];
-                } else {
-                    $parent = $virtualDir ? app('evo.url')->getIdFromAlias($virtualDir) : 0;
-                    if ($parent === null) {
-                        $this->sendErrorPage();
-                    }
-                    $doc = SiteContent::query()
-                        ->select('id')
-                        ->where('parent', $parent)
-                        ->where('alias', $this->documentIdentifier)
-                        ->first();
-                    if (is_null($doc)) {
-                        $hidden = Cache::rememberForever('hidden_aliases', function () {
-                            return SiteContent::query()
-                                ->select('id', 'parent')
-                                ->where('alias_visible', 0)
-                                ->where('isfolder', 1)
-                                ->pluck('parent', 'id')->toArray();
-                        });
-                        $docs = SiteContent::query()
-                            ->select('id', 'parent')
-                            ->where('alias', $this->documentIdentifier)
-                            ->get();
-                        $found = false;
-                        foreach ($docs as $doc) {
-                            $tmp_parent = $doc->parent;
-                            while (isset($hidden[$tmp_parent])) {
-                                $tmp_parent = $hidden[$tmp_parent];
-                            }
-                            if ($parent == $tmp_parent) {
-                                $found = true;
-                                break;
-                            }
-                        }
-                        if (is_null($doc) || !$found) {
-                            $this->sendErrorPage();
-                        }
-                    }
-
-                    $this->documentIdentifier = $doc->getKey();
-                }
-            } else {
-                // use_alias_path = Use Friendly URL alias path = NO
-                if (isset(app('evo.url')->documentListing[$this->documentIdentifier])) {
-                    $this->documentIdentifier =
-                        app('evo.url')->documentListing[$this->documentIdentifier];
-                } else {
-                    $doc = SiteContent::query()
-                        ->select('id')
-                        ->where('alias', $this->documentIdentifier)
-                        ->first();
-
-                    if (is_null($doc)) {
-                        $this->sendErrorPage();
-                    }
-
-                    $this->documentIdentifier = $doc->getKey();
-                }
-            }
-        }
-
-        $this->documentMethod = 'id';
-        app('evo.tpl')->setTemplatePath('views/');
-
-        //$this->_fixURI();
-
-        // invoke OnWebPageInit event
-        $this->invokeEvent('OnWebPageInit');
-
-        // invoke OnLogPageView event
-        if ($this->getConfig('track_visitors')) {
-            $this->invokeEvent('OnLogPageHit');
-        }
-
-        if ($this->getConfig('seostrict')) {
-            $this->sendStrictURI();
-        }
-
-        $this->prepareResponse();
-    }
-
-    /**
-     * @param $path
-     * @param null $suffix
-     *
-     * @return mixed
-     */
-    // phpcs:ignore
-    public function mb_basename($path, $suffix = null)
-    {
-        $exp = explode('/', $path);
-
-        return str_replace((string) $suffix, '', end($exp));
-    }
-
-    // phpcs:ignore
-    public function _IIS_furl_fix()
-    {
-        if ($this->getConfig('friendly_urls') != 1) {
-            return;
-        }
-
-        if (!Str::contains($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS')) {
-            return;
-        }
-
-        $url = $_SERVER['QUERY_STRING'];
-        $err = substr($url, 0, 3);
-        if ($err !== '404' && $err !== '405') {
-            return;
-        }
-
-        $k = array_keys($_GET);
-        unset($_GET[$k[0]], $_REQUEST[$k[0]]);
-        // remove 404,405 entry
-        $qp = parse_url(str_replace(MODX_SITE_URL, '', substr($url, 4)));
-        $_SERVER['QUERY_STRING'] = $qp['query'];
-        if ($qp['query']) {
-            parse_str($qp['query'], $qv);
-            foreach ($qv as $n => $v) {
-                $_REQUEST[$n] = $_GET[$n] = $v;
-            }
-        }
-        $_SERVER['PHP_SELF'] = MODX_BASE_URL . $qp['path'];
-        $this->q = $qp['path'];
-    }
-
-    /**
-     * The next step called at the end of executeParser()
-     *
-     * - checks cache
-     * - checks if document/resource is deleted/unpublished
-     * - checks if resource is a weblink and redirects if so
-     * - gets template and parses it
-     * - ensures that postProcess is called when PHP is finished
-     */
-    public function prepareResponse()
-    {
-        // we now know the method and identifier, let's check the cache
-
-        if ($this->getConfig('enable_cache') == 2 && $this->isLoggedIn()) {
-            $this->setConfig('enable_cache', 0);
-        }
-
-        $this->documentContent = '';
-        if ($this->getConfig('enable_cache')) {
-            $this->documentContent = $this->getDocumentObjectFromCache($this->documentIdentifier, true);
-        }
-
-        $this->documentGenerated = 0;
-        $template = false;
-        if ($this->documentContent == '') {
-            // get document object from DB
-            $this->documentObject =
-                $this->getDocumentObject($this->documentMethod, $this->documentIdentifier, 'prepareResponse');
-
-            // write the documentName to the object
-            $this->documentName = &$this->documentObject['pagetitle'];
-
-            // check if we should not hit this document
-            if ($this->documentObject['hide_from_tree'] == 1) {
-                $this->setConfig('track_visitors', 0);
-            }
-
-            if ($this->documentObject['deleted'] == 1) {
-                $this->sendErrorPage();
-            } elseif ($this->documentObject['published'] == 0) { // validation routines
-                $this->_sendErrorForUnpubPage();
-            } elseif ($this->documentObject['type'] === 'reference') {
-                $this->_sendRedirectForRefPage($this->documentObject['content']);
-            }
-
-            $template = app('evo.tpl')->getBladeDocumentContent();
-
-            if ($template) {
-                $this->documentObject['cacheable'] = 0;
-                /** @var \Illuminate\View\View $tpl */
-
-                if (isset($this->documentObject['id'])) {
-                    $data = [
-                        'modx' => $this,
-                        'documentObject' => $this->makeDocumentObject($this->documentObject['id']),
-                    ];
-                } else {
-                    $data = [
-                        'modx' => $this,
-                        'documentObject' => [],
-                        'siteContentObject' => [],
-                    ];
-                }
-
-                view()->share($data);
-
-                if ($this->isChunkProcessor('DLTemplate')) {
-                    app('evo.tpl')->getBlade()->share($data);
-                }
-
-                $tpl = view()->make($template, $this->dataForView);
-                $templateCode = $tpl->render();
-            } else {
-                // get the template and start parsing!
-                if (!$this->documentObject['template']) {
-                    $templateCode = '[*content*]';
-                } else { // use blank template
-                    $templateCode = app('evo.tpl')->getTemplateCodeFromDB($this->documentObject['template']);
-                }
-
-                if (strpos($templateCode, '@INCLUDE') === 0) {
-                    $templateCode = $this->atBindInclude($templateCode);
-                }
-            }
-
-            $this->documentContent = &$templateCode;
-
-            // invoke OnLoadWebDocument event
-            $this->invokeEvent('OnLoadWebDocument');
-
-            if (!$template) {
-                // Parse document source
-                $this->documentContent = $this->parseDocumentSource($this->documentContent);
-            }
-
-            $this->documentGenerated = 1;
-        }
-
-        if ($this->getConfig('error_page') == $this->documentIdentifier) {
-            if ($this->getConfig('error_page') != $this->getConfig('site_start')) {
-                header('HTTP/1.0 404 Not Found');
-            }
-        }
-
-        if ($template) {
-            $this->outputContent(false, false);
-        } else {
-            register_shutdown_function([& $this, 'postProcess']); // tell PHP to call postProcess when it shuts down
-            $this->outputContent();
-        }
-    }
-
-    public function _sendErrorForUnpubPage()
-    {
-        // Can't view unpublished pages !$this->checkPreview()
-        if (!$this->hasPermission('view_unpublished', 'mgr') && !$this->hasPermission('view_unpublished')) {
-            $this->sendErrorPage();
-
-            return;
-        }
-
-        $udperms = new Legacy\Permissions();
-        $udperms->user = $this->getLoginUserID();
-        $udperms->document = $this->documentIdentifier;
-        $udperms->role = $_SESSION['mgrRole'];
-        // Doesn't have access to this document
-        if (!$udperms->checkPermissions()) {
-            $this->sendErrorPage();
-        }
-    }
-
-    /**
-     * @param $url
-     */
-    public function _sendRedirectForRefPage($url)
-    {
-        // check whether it's a reference
-        if (preg_match('@^[1-9]\d*$@', $url)) {
-            $url = app('evo.url')->makeUrl($url); // if it's a bare document id
-        } elseif (Str::contains($url, '[~')) {
-            $url = app('evo.url')->rewriteUrls($url); // if it's an internal docid tag, process it
-        }
-        $this->sendRedirect($url, 0, '', 'HTTP/1.0 302 Moved Temporarily');
-        exit;
-    }
-
-    /**
-     * @deprecated use TemplateProcessor::getTemplateCodeFromDB()
-     */
-    public function _getTemplateCodeFromDB($templateID)
-    {
-        return TemplateProcessor::getTemplateCodeFromDB($templateID);
-    }
-
-    /**
-     * Returns an array of all parent record IDs for the id passed.
-     *
-     * @param int $id Docid to get parents for.
-     * @param int $height The maximum number of levels to go up, default 10.
-     *
-     * @return array
-     */
-    public function getParentIds($id, $height = 10)
-    {
-        $parents = [];
-        while ($id && $height--) {
-            $aliasListing =app('evo.url')->aliasListing[$id] ?? [];
-            $tmp = $aliasListing['parent'];
-
-            $current_id = $id;
-
-            if ($this->getConfig('alias_listing') != 1) {
-                $id = $tmp ?? (int) Models\SiteContent::query()->findOrNew($id)->parent;
-            } else {
-                $id = $tmp;
-            }
-
-            if ((int) $id === 0) {
-                break;
-            }
-            $parents[$current_id] = (int) $id;
-        }
-
-        return $parents;
-    }
-
-    /**
-     * @param $id
-     * @param int $top
-     *
-     * @return mixed
-     */
-    public function getUltimateParentId($id, $top = 0)
-    {
-        $i = 0;
-        while ($id && $i < 20) {
-            if ($top == app('evo.url')->aliasListing[$id]['parent']) {
-                break;
-            }
-            $id = app('evo.url')->aliasListing[$id]['parent'];
-            $i++;
-        }
-
-        return $id;
-    }
-
-    /**
-     * Returns an array of child IDs belonging to the specified parent.
-     *
-     * @param int $id The parent resource/document to start from
-     * @param int $depth How many levels deep to search for children, default: 10
-     * @param array $children Optional array of docids to merge with the result.
-     *
-     * @return array Contains the document Listing (tree) like the sitemap
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     */
-    public function getChildIds($id, $depth = 10, $children = [])
-    {
-        static $cached = [];
-
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($cached[$cacheKey])) {
-            return $cached[$cacheKey];
-        }
-        $cached[$cacheKey] = [];
-
-        if ($this->getConfig('alias_listing') != 1) {
-            $id = is_array($id) ? $id : [$id];
-            $res = Models\SiteContent::withTrashed()->select(['id', 'alias', 'isfolder', 'parent'])
-                ->whereIn('parent', $id)
-                ->get()
-                ->toArray();
-
-            $idx = [];
-            foreach ($res as $row) {
-                $pAlias = '';
-                if (isset(app('evo.url')->aliasListing[$row['parent']])) {
-                    if (app('evo.url')->aliasListing[$row['parent']]['path']) {
-                        $pAlias .= app('evo.url')->aliasListing[$row['parent']]['path'] . '/';
-                    }
-                    if (app('evo.url')->aliasListing[$row['parent']]['alias']) {
-                        $pAlias .= app('evo.url')->aliasListing[$row['parent']]['alias'] . '/';
-                    }
-                };
-                $children[$pAlias . $row['alias']] = $row['id'];
-                if ($row['isfolder']) {
-                    $idx[] = $row['id'];
-                }
-            }
-            $depth--;
-            if ($idx && $depth) {
-                $children = $this->getChildIds($idx, $depth, $children);
-            }
-            $cached[$cacheKey] = $children;
-
-            return $children;
-        }
-
-        // Initialise a static array to index parents->children
-        static $documentMap_cache = [];
-        if (!$documentMap_cache) {
-            foreach ($this->documentMap as $document) {
-                foreach ($document as $p => $c) {
-                    $documentMap_cache[$p][] = $c;
-                }
-            }
-        }
-
-        // Get all the children for this parent node
-        if (isset($documentMap_cache[$id])) {
-            $depth--;
-            foreach ($documentMap_cache[$id] as $childId) {
-                if (strlen(app('evo.url')->aliasListing[$childId]['path'])) {
-                    $pkey = "{app('evo.url')->aliasListing[" . $childId . "]['path']}/" .
-                        app('evo.url')->aliasListing[$childId]['alias'];
-                } else {
-                    $pkey = app('evo.url')->aliasListing[$childId]['alias'];
-                }
-                if ($pkey == '') {
-                    $pkey = (string) $childId;
-                }
-                $children[$pkey] = $childId;
-
-                if ($depth && isset($documentMap_cache[$childId])) {
-                    $children += $this->getChildIds($childId, $depth);
-                }
-            }
-        }
-
-        $cached[$cacheKey] = $children;
-
-        return $children;
-    }
-
-    /**
-     * Displays a javascript alert message in the web browser and quit
-     *
-     * @param string $msg Message to show
-     * @param string $url URL to redirect to
-     */
-    public function webAlertAndQuit($msg, $url = '')
-    {
-        $manager_charset = Arr::get($GLOBALS, 'modx_manager_charset', $this->getConfig('modx_charset'));
-        $lang_attribute = Arr::get($GLOBALS, 'modx_lang_attribute', $this->getConfig('lang_code'));
-
-        if (Arr::get($GLOBALS, 'modx_textdir', $this->getConfig('manager_direction')) === 'rtl') {
-            $textdir = 'rtl';
-        } else {
-            $textdir = 'ltr';
-        }
-
-        if (stripos($url, 'javascript:') === 0) {
-            $fnc = substr($url, 11);
-        } elseif ($url === '#') {
-            $fnc = '';
-        } elseif (!$url) {
-            $fnc = 'history.back(-1);';
-        } else {
-            $fnc = "window.location.href='" . addslashes($url) . "';";
-        }
-
-        $style = '';
-        if (IN_MANAGER_MODE) {
-            $path = 'media/style/' . $this->getConfig('manager_theme') . '/';
-            if (is_file(MODX_MANAGER_PATH . $path . '/css/styles.min.css')) {
-                $file_name = '/css/styles.min.css';
-            } else {
-                $file_name = 'style.css';
-            }
-            $style = '<link rel="stylesheet" type="text/css" href="' . MODX_MANAGER_URL . $path . $file_name . '?v=' .
-                Arr::get($GLOBALS, 'lastInstallTime', time()) . '"/>';
-        }
-
-        ob_get_clean();
-        echo '<!DOCTYPE html>
-            <html lang="' . $lang_attribute . '" dir="' . $textdir . '">
-                <head>
-                <title>Evolution CMS :: Alert</title>
-                <meta http-equiv="Content-Type" content="text/html; charset=' . $manager_charset . ';">
-                ' . $style . "
-                <script>
-                    function __alertQuit() {
-                        var el = document.querySelector('p');
-                        alert(el.innerHTML);
-                        el.remove();
-                        " . $fnc . "
-                    }
-                    window.setTimeout(__alertQuit, 100);
-                </script>
-            </head>
-            <body>
-                <p>" . $msg . '</p>
-            </body>
-        </html>';
-        exit;
-    }
-
-    /**
-     * Returns 1 if user has the currect permission
-     *
-     * @param string $pm Permission name
-     *
-     * @return bool
-     */
-    public function hasPermission($pm, $context = '')
-    {
-        if (app()->runningInConsole()) {
-            return true;
-        }
-
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        if (isset($_SESSION[$context . 'Role']) && $_SESSION[$context . 'Role'] == 1) {
-            return true;
-        }
-
-        $state = false;
-        $pms = Session::get($context . 'Permissions', []);
-        if ($pms) {
-            $state = isset($pms[$pm]) && (bool) $pms[$pm] === true;
-        }
-
-        return $state;
-    }
-
-    /**
-     * @param array $permissions
-     *
-     * @return bool
-     */
-    public function hasAnyPermissions(array $permissions, $context = '')
-    {
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        foreach ($permissions as $p) {
-            if ($this->hasPermission($p, $context)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns true if element is locked
-     *
-     * @param int $type Types: 1=template, 2=tv, 3=chunk, 4=snippet, 5=plugin, 6=module, 7=resource, 8=role
-     * @param int $id Element- / Resource-id
-     * @param bool $includeThisUser true = Return also info about actual user
-     *
-     * @return array lock-details or null
-     */
-    public function elementIsLocked($type, $id, $includeThisUser = false)
-    {
-        $id = (int) $id;
-        $type = (int) $type;
-        if (!$type || !$id) {
-            return null;
-        }
-
-        // Build lockedElements-Cache at first call
-        $this->buildLockedElementsCache();
-        if (!$includeThisUser && ($this->lockedElements[$type . '.' . $id . '.sid'] ?? null) == $this->sid) {
-            return null;
-        }
-
-        if (isset($this->lockedElements[$type][$id])) {
-            return $this->lockedElements[$type][$id];
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns Locked Elements as Array
-     *
-     * @param int $type Types: 0=all, 1=template, 2=tv, 3=chunk, 4=snippet, 5=plugin, 6=module, 7=resource, 8=role
-     * @param bool $minimumDetails true =
-     *
-     * @return array|mixed|null
-     */
-    public function getLockedElements($type = 0, $minimumDetails = false)
-    {
-        $this->buildLockedElementsCache();
-
-        if (!$minimumDetails) {
-            $lockedElements = $this->lockedElements;
-        } else {
-            // Minimum details for HTML / Ajax-requests
-            $lockedElements = [];
-            foreach ($this->lockedElements as $elType => $elements) {
-                foreach ($elements as $elId => $el) {
-                    $lockedElements[$elType][$elId] = [
-                        'username' => $el['username'],
-                        'lasthit_df' => $el['lasthit_df'],
-                        'state' => $this->determineLockState($el['internalKey']),
-                    ];
-                }
-            }
-        }
-
-        if ($type == 0) {
-            return $lockedElements;
-        }
-
-        $type = (int) $type;
-        if (isset($lockedElements[$type])) {
-            return $lockedElements[$type];
-        }
-
-        return [];
-    }
-
-    /**
-     * Builds the Locked Elements Cache once
-     */
-    public function buildLockedElementsCache()
-    {
-        if ($this->lockedElements === null) {
-            $this->lockedElements = [];
-            $this->cleanupExpiredLocks();
-            $rs = ActiveUserLock::query()
-                ->select('sid', 'internalKey', 'elementType', 'elementId', 'lasthit', 'username')
-                ->leftJoin('users', 'active_user_locks.internalKey', '=', 'users.id')
-                ->get();
-            foreach ($rs->toArray() as $row) {
-                $this->lockedElements[$row['elementType']][$row['elementId']] = [
-                    'sid' => $row['sid'],
-                    'internalKey' => $row['internalKey'],
-                    'username' => $row['username'],
-                    'elementType' => $row['elementType'],
-                    'elementId' => $row['elementId'],
-                    'lasthit' => $row['lasthit'],
-                    'lasthit_df' => $this->toDateFormat($row['lasthit']),
-                    'state' => $this->determineLockState($row['sid']),
-                ];
-            }
-        }
-    }
-
-    /**
-     * Cleans up the active user locks table
-     */
-    public function cleanupExpiredLocks()
-    {
-        // Clean-up active_user_sessions first
-        if ((int) $this->getConfig('session_timeout') < 2) {
-            $timeout = 120;
-        } else {
-            $timeout = $this->getConfig('session_timeout') * 60;
-        }
-        // session.js pings every 10min, so 2min is minimum
-        $validSessionTimeLimit = $this->time - $timeout;
-        ActiveUserSession::where('lasthit', '<', (int) $validSessionTimeLimit)->delete();
-
-        // Clean-up active_user_locks
-        $activeUsers = ActiveUserSession::select('sid', 'internalKey')->get();
-
-        if ($activeUsers->count() > 0) {
-            $rs = $activeUsers->toArray();
-            $userSids = [];
-            foreach ($rs as $row) {
-                $userSids[] = $row['sid'];
-            }
-            ActiveUserSession::whereNotIn('sid', $userSids)->delete();
-        } else {
-            ActiveUserLock::query()->truncate();
-        }
-    }
-
-    /**
-     * Cleans up the active users table
-     */
-    public function cleanupMultipleActiveUsers()
-    {
-        $timeout = 20 * 60; // Delete multiple user-sessions after 20min
-        $validSessionTimeLimit = $this->time - $timeout;
-
-        $activeUserSids = ActiveUserSession::all();
-        if ($activeUserSids->count() > 0) {
-            $activeUserSids = $activeUserSids->pluck('sid');
-        } else {
-            $activeUserSids = [];
-        }
-
-        $activeUsers = ActiveUser::query()->orderBy('lasthit', 'DESC')->get();
-
-        if ($activeUsers->count() > 0) {
-            $rs = $activeUsers->toArray();
-            $internalKeyCount = [];
-            $deleteSids = [];
-            foreach ($rs as $row) {
-                if (!isset($internalKeyCount[$row['internalKey']])) {
-                    $internalKeyCount[$row['internalKey']] = 0;
-                }
-                $internalKeyCount[$row['internalKey']]++;
-
-                if ($internalKeyCount[$row['internalKey']] > 1
-                    && !in_array($row['sid'], $activeUserSids)
-                    && $row['lasthit'] < $validSessionTimeLimit
-                ) {
-                    $deleteSids[] = $row['sid'];
-                };
-            }
-
-            if (count($deleteSids) > 0) {
-                ActiveUser::query()->whereIn('sid', $deleteSids)->delete();
-            }
-
-            return;
-        }
-    }
-
-    /**
-     * Determines state of a locked element acc. to user-permissions
-     *
-     * @param $sid
-     *
-     * @return int $state States: 0=No display, 1=viewing this element, 2=locked, 3=show unlock-button
-     * @internal param int $internalKey : ID of User who locked actual element
-     */
-    public function determineLockState($sid)
-    {
-        if (!$this->hasPermission('display_locks')) {
-            return 0;
-        }
-
-        if ($sid == $this->sid) {
-            return 1;
-        }
-
-        if ($this->hasPermission('remove_locks')) {
-            return 3;
-        }
-
-        return 2;
-    }
-
-    /**
-     * Locks an element
-     *
-     * @param int $type Types: 1=template, 2=tv, 3=chunk, 4=snippet, 5=plugin, 6=module, 7=resource, 8=role
-     * @param int $id Element- / Resource-id
-     *
-     * @return bool
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws TableNotDefinedException
-     */
-    public function lockElement($type, $id)
-    {
-        $userId = $this->isBackend() && $_SESSION['mgrInternalKey'] ? $_SESSION['mgrInternalKey'] : 0;
-        $type = (int) $type;
-        $id = (int) $id;
-        if (!$type || !$id || !$userId) {
-            return false;
-        }
-
-        return ActiveUserLock::query()->updateOrCreate(
-            ['elementId' => $id],
-            [
-                'internalKey' => $userId,
-                'elementType' => $type,
-                'lasthit' => $this->time,
-                'sid' => $this->sid,
-            ]
-        );
-    }
-
-    /**
-     * Unlocks an element
-     *
-     * @param int $type Types: 1=template, 2=tv, 3=chunk, 4=snippet, 5=plugin, 6=module, 7=resource, 8=role
-     * @param int $id Element- / Resource-id
-     * @param bool $includeAllUsers true = Deletes not only own user-locks
-     *
-     * @return bool
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws TableNotDefinedException
-     */
-    public function unlockElement($type, $id, $includeAllUsers = false)
-    {
-        $userId = $this->isBackend() && $_SESSION['mgrInternalKey'] ? $_SESSION['mgrInternalKey'] : 0;
-        $type = (int) $type;
-        $id = (int) $id;
-        if (!$type || !$id) {
-            return false;
-        }
-
-        if (!$includeAllUsers) {
-            return ActiveUserLock::where('internalKey', $userId)
-                ->where('elementType', $type)
-                ->where('elementId', $id)
-                ->delete();
-        }
-
-        return Models\ActiveUserLock::where(['elementType' => $type, 'elementId' => $id])->delete();
-    }
-
-    /**
-     * Updates table "active_user_sessions" with userid, lasthit, IP
-     */
-    public function updateValidatedUserSession()
-    {
-        if (!$this->sid) {
-            return;
-        }
-
-        // Get user IP
-        if (getenv('HTTP_CLIENT_IP')) {
-            $_SESSION['ip'] = getenv('HTTP_CLIENT_IP');
-        } elseif (getenv('HTTP_X_FORWARDED_FOR')) {
-            $_SESSION['ip'] = getenv('HTTP_X_FORWARDED_FOR');
-        } elseif (getenv('REMOTE_ADDR')) {
-            $_SESSION['ip'] = getenv('REMOTE_ADDR');
-        } else {
-            $_SESSION['ip'] = 'UNKNOWN';
-        }
-
-        // web users are stored with negative keys
-        $userId = $this->getLoginUserID();
-        if ($userId != false) {
-            Models\ActiveUserSession::where('internalKey', $userId)->delete();
-            Models\ActiveUserSession::where('sid', $this->sid)->delete();
-            try {
-                Models\ActiveUserSession::updateOrCreate([
-                    'internalKey' => $userId,
-                    'sid' => $this->sid,
-                ], [
-                    'lasthit' => $this->time,
-                    'ip' => $_SESSION['ip'],
-                ]);
-            } catch (Exception $exception) {
-                //
-            }
-        }
-    }
-
-    /**
-     * Add an a alert message to the system event log
-     *
-     * @param int $evtid Event ID
-     * @param int $type Types: 1 = information, 2 = warning, 3 = error
-     * @param string $msg Message to be logged
-     * @param string $source source of the event (module, snippet name, etc.)
-     *                       Default: Parser
-     *
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\GetDataException
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\TooManyLoopsException
-     * @throws Exception
-     */
-    public function logEvent($evtid, $type, $msg, $source = 'Parser')
-    {
-//        if (!$this->getDatabase()->getConnection()->getDatabaseName()) {
-//            return;
-//        }
-
-        if (strpos((string) \Illuminate\Support\Facades\DB::getConfig('charset'), 'utf8') === 0 &&
-            extension_loaded('mbstring')
-        ) {
-            $esc_source = mb_substr($source, 0, 50, 'UTF-8');
-        } else {
-            $esc_source = substr($source, 0, 50);
-        }
-
-        $LoginUserID = $this->getLoginUserID();
-        if ($LoginUserID == '') {
-            $LoginUserID = 0;
-        }
-
-        $evtid = (int) $evtid;
-        $type = (int) $type;
-
-        // Types: 1 = information, 2 = warning, 3 = error
-        if ($type < 1) {
-            $type = 1;
-        } elseif ($type > 3) {
-            $type = 3;
-        }
-
-        EventLog::insert([
-            'eventid' => (int) $evtid,
-            'type' => $type,
-            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
-            'source' => $esc_source,
-            'description' => $msg,
-            'user' => $LoginUserID,
-            'usertype' => $this->isFrontend() ? 1 : 0,
-        ]);
-
-        $this->invokeEvent('OnLogEvent', [
-            'eventid' => (int) $evtid,
-            'type' => $type,
-            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
-            'source' => $esc_source,
-            'description' => $msg,
-            'user' => $LoginUserID,
-            'usertype' => $this->isFrontend() ? 1 : 0,
-        ]);
-
-        if ($this->getConfig('send_errormail', '0') != '0') {
-            if ($this->getConfig('send_errormail') <= $type) {
-                $this->sendmail([
-                    'subject' => 'Evolution CMS System Error on ' . $this->getConfig('site_name'),
-                    'body' => 'Source: ' . $source .
-                        ' - The details of the error could be seen in the Evolution CMS system events log.',
-                    'type' => 'text',
-                ]);
-            }
-        }
-    }
-
-    /**
-     * @param string|array $params
-     * @param string $msg
-     * @param array $files
-     *
-     * @return bool
-     * @throws Exception
-     */
-    public function sendmail($params = [], $msg = '', $files = [])
-    {
-        if (\is_scalar($params)) {
-            if (!Str::contains($params, '=')) {
-                if (Str::contains($params, '@')) {
-                    $p['to'] = $params;
-                } else {
-                    $p['subject'] = $params;
-                }
-            } else {
-                $params_array = explode(',', $params);
-                foreach ($params_array as $k => $v) {
-                    $k = trim($k);
-                    $v = trim($v);
-                    $p[$k] = $v;
-                }
-            }
-        } else {
-            $p = $params;
-        }
-        if (isset($p['sendto'])) {
-            $p['to'] = $p['sendto'];
-        }
-
-        if (isset($p['to']) && preg_match('@^\d+$@', $p['to'])) {
-            $userinfo = $this->getUserInfo($p['to']);
-            $p['to'] = $userinfo['email'];
-        }
-        if (isset($p['from']) && preg_match('@^\d+$@', $p['from'])) {
-            $userinfo = $this->getUserInfo($p['from']);
-            $p['from'] = $userinfo['email'];
-            $p['fromname'] = $userinfo['username'];
-        }
-        if ($msg === '' && !isset($p['body'])) {
-            $p['body'] = $_SERVER['REQUEST_URI'] . "\n" . $_SERVER['HTTP_USER_AGENT'] . "\n" . $_SERVER['HTTP_REFERER'];
-        } elseif (is_string($msg) && 0 < strlen($msg)) {
-            $p['body'] = $msg;
-        }
-
-        $sendto = !isset($p['to']) ? $this->getConfig('emailsender') : $p['to'];
-        $sendto = explode(',', $sendto);
-        $mail = $this->getMail();
-        foreach ($sendto as $address) {
-            [$name, $address] = $mail->address_split($address);
-            $mail->AddAddress($address, $name);
-        }
-        if (isset($p['cc'])) {
-            $p['cc'] = explode(',', $p['cc']);
-            foreach ($p['cc'] as $address) {
-                [$name, $address] = $mail->address_split($address);
-                $mail->AddCC($address, $name);
-            }
-        }
-        if (isset($p['bcc'])) {
-            $p['bcc'] = explode(',', $p['bcc']);
-            foreach ($p['bcc'] as $address) {
-                [$name, $address] = $mail->address_split($address);
-                $mail->AddBCC($address, $name);
-            }
-        }
-        if (isset($p['from']) && Str::contains($p['from'], '<') && substr($p['from'], -1) === '>') {
-            [$p['fromname'], $p['from']] = $mail->address_split($p['from']);
-        }
-        $mail->setFrom(
-            isset($p['from']) ? $p['from'] : $this->getConfig('emailsender'),
-            isset($p['fromname']) ? $p['fromname'] : $this->getConfig('site_name')
-        );
-        $mail->Subject = (!isset($p['subject'])) ? $this->getConfig('emailsubject') : $p['subject'];
-        $mail->Body = $p['body'];
-        if (isset($p['type']) && $p['type'] === 'text') {
-            $mail->IsHTML(false);
-        }
-        if (!is_array($files)) {
-            $files = [];
-        }
-        foreach ($files as $name => $path) {
-            if (!is_file($path) || !is_readable($path)) {
-                $path = MODX_BASE_PATH . $path;
-            }
-            if (is_file($path) && is_readable($path)) {
-                if (is_numeric($name)) {
-                    $mail->AddAttachment($path);
-                } else {
-                    $mail->AddAttachment($path, $name);
-                }
-            }
-        }
-
-        return $mail->send();
-    }
-
-    /**
-     * @param string $target
-     * @param int $limit
-     * @param int $trim
-     *
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     */
-    // phpcs:ignore
-    public function rotate_log($target = 'event_log', $limit = 3000, $trim = 100)
-    {
-        if ($limit < $trim) {
-            $trim = $limit;
-        }
-
-        $count = DB::table($target)->count();
-        $over = $count - $limit;
-        if (0 < $over) {
-            $trim = ($over + $trim);
-            DB::table($target)->take($trim)->delete();
-        }
-    }
-
-    /**
-     * Returns true if manager is running in safe mode
-     *
-     * @return boolean
-     */
-    public function isSafemode(): bool
-    {
-        return defined('SAFE_MODE') && SAFE_MODE && $this->isBackend();
-    }
-
-    /**
-     * Returns true if we are currently in the manager backend
-     *
-     * @return boolean
-     */
-    public function isBackend(): bool
-    {
-        return defined('IN_MANAGER_MODE') && IN_MANAGER_MODE;
-    }
-
-    /**
-     * Returns true if we are currently in the frontend
-     *
-     * @return boolean
-     */
-    public function isFrontend(): bool
-    {
-        return !$this->isBackend();
-    }
-
-    /**
-     * Gets all child documents of the specified document, including those which are unpublished or deleted.
-     *
-     * @param int $id The Document identifier to start with
-     * @param string $sort Sort field
-     *                     Default: menuindex
-     * @param string $dir Sort direction, ASC and DESC is possible
-     *                    Default: ASC
-     * @param string $fields Default: id, pagetitle, description, parent, alias, menutitle
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     */
-    public function getAllChildren(
-        $id = 0,
-        $sort = 'menuindex',
-        $dir = 'ASC',
-        $fields = 'id, pagetitle, description, parent, alias, menutitle',
-        $checkAccess = true)
-    {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        // modify field names to use sc. table reference
-        $fields = array_filter(array_map('trim', explode(',', $fields)));
-        foreach ($fields as $key => $value) {
-            if (stristr($value, '.') === false) {
-                $fields[$key] = 'site_content.' . $value;
-            }
-        }
-        $content = SiteContent::query()
-            ->withTrashed()
-            ->select($fields)
-            ->where('site_content.parent', $id)
-            ->groupBy('site_content.id');
-        if ($sort != '') {
-            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
-            $content = $content->orderBy($sort, $dir);
-        }
-        if ($checkAccess) {
-            $content->withoutProtected();
-        }
-        // build query
-        $resourceArray = $content->get()->toArray();
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
-
-        return $resourceArray;
-    }
-
-    /**
-     * Gets all active child documents of the specified document, i.e. those which published and not deleted.
-     *
-     * @param int $id The Document identifier to start with
-     * @param string $sort Sort field
-     *                     Default: menuindex
-     * @param string $dir Sort direction, ASC and DESC is possible
-     *                    Default: ASC
-     * @param string $fields Default: id, pagetitle, description, parent, alias, menutitle
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     */
-    public function getActiveChildren(
-        $id = 0,
-        $sort = 'menuindex',
-        $dir = 'ASC',
-        $fields = 'id, pagetitle, description, parent, alias, menutitle',
-        $checkAccess = true)
-    {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        // modify field names to use sc. table reference
-        $fields = array_filter(array_map('trim', explode(',', $fields)));
-        foreach ($fields as $key => $value) {
-            if (stristr($value, '.') === false) {
-                $fields[$key] = 'site_content.' . $value;
-            }
-        }
-        $content = SiteContent::query()
-            ->select($fields)
-            ->where('site_content.parent', $id)
-            ->active()
-            ->groupBy('site_content.id');
-        if ($sort != '') {
-            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
-            $content = $content->orderBy($sort, $dir);
-        }
-        if ($checkAccess) {
-            $content->withoutProtected();
-        }
-        // build query
-        $resourceArray = $content->get()->toArray();
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
-
-        return $resourceArray;
-    }
-
-    /**
-     * getDocumentChildren
-     *
-     * @param int $parentid {integer}
-     * - The parent document identifier. Default: 0 (site root).
-     * @param int $published {0; 1; 'all'}
-     * - Document publication status. Once the parameter equals 'all', the result will be returned regardless of whether the ducuments are published or they are not. Default: 1.
-     * @param int $deleted {0; 1; 'all'}
-     * - Document removal status. Once the parameter equals 'all', the result will be returned regardless of whether the ducuments are deleted or they are not. Default: 0.
-     * @param string $fields {comma separated string; '*'}
-     * - Comma separated list of document fields to get. Default: '*' (all fields).
-     * @param string $where {string}
-     * - Where condition in SQL style. Should include a leading 'AND '. Default: ''.
-     * @param string $sort {comma separated string}
-     * - Should be a comma-separated list of field names on which to sort. Default: 'menuindex'.
-     * @param string $dir {'ASC'; 'DESC'}
-     * - Sort direction, ASC and DESC is possible. Default: 'ASC'.
-     * @param string $limit {string}
-     * - Should be a valid SQL LIMIT clause without the 'LIMIT ' i.e. just include the numbers as a string. Default: Empty string (no limit).
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array|mixed {array; false} - Result array, or false. - Result array, or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.1.1 (2014-02-19)
-     *
-     * @desc Returns the children of the selected document/folder as an associative array.
-     *
-     */
-    public function getDocumentChildren(
-        $parentid = 0,
-        $published = 1,
-        $deleted = 0,
-        $fields = '*',
-        $where = '',
-        $sort = 'menuindex',
-        $dir = 'ASC',
-        $limit = '',
-        $checkAccess = true
-    ) {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        $documentChildren = SiteContent::query()->withTrashed()->where('site_content.parent', $parentid);
-        if ($published !== 'all') {
-            $documentChildren = $documentChildren->where('site_content.published', $published);
-        }
-        if ($deleted !== 'all') {
-            $documentChildren = $documentChildren->where('site_content.deleted', $deleted);
-        }
-
-        if (is_string($where) && $where != '') {
-            $documentChildren = $documentChildren->whereRaw($where);
-        } elseif (is_array($where)) {
-            $documentChildren = $documentChildren->where($where);
-        }
-
-        $fields = array_filter(array_map('trim', explode(',', $fields)));
-        foreach ($fields as $key => $value) {
-            if (stristr($value, '.') === false) {
-                $fields[$key] = 'site_content.' . $value;
-            }
-        }
-        $documentChildren = $documentChildren->select($fields);
-
-        // modify field names to use sc. table reference
-        if ($sort != '') {
-            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
-            $documentChildren = $documentChildren->orderBy($sort, $dir);
-        }
-
-        if ($checkAccess) {
-            $documentChildren->withoutProtected();
-        }
-
-        if (is_numeric($limit)) {
-            $documentChildren = $documentChildren->take($limit);
-        }
-        $resourceArray = $documentChildren->get()->toArray();
-
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
-
-        return $resourceArray;
-    }
-
-    /**
-     * getDocuments
-     *
-     * @param array $ids {array; comma separated string}
-     * - Documents Ids to get. @required
-     * @param int $published {0; 1; 'all'}
-     * - Documents publication status. Once the parameter equals 'all', the result will be returned regardless of whether the documents are published or they are not. Default: 1.
-     * @param int $deleted {0; 1; 'all'}
-     * - Documents removal status. Once the parameter equals 'all', the result will be returned regardless of whether the documents are deleted or they are not. Default: 0.
-     * @param string $fields {comma separated string; '*'}
-     * - Documents fields to get. Default: '*'.
-     * @param string $where {string}
-     * - SQL WHERE clause. Default: ''.
-     * @param string $sort {comma separated string}
-     * - A comma-separated list of field names to sort by. Default: 'menuindex'.
-     * @param string $dir {'ASC'; 'DESC'}
-     * - Sorting direction. Default: 'ASC'.
-     * @param string $limit {string}
-     * - SQL LIMIT (without 'LIMIT '). An empty string means no limit. Default: ''.
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array|bool|mixed {array; false} - Result array with documents, or false. - Result array with documents, or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.1.1 (2013-02-19)
-     *
-     * @desc Returns required documents (their fields).
-     *
-     */
-    public function getDocuments(
-        $ids = [],
-        $published = 1,
-        $deleted = 0,
-        $fields = '*',
-        $where = '',
-        $sort = 'menuindex',
-        $dir = 'ASC',
-        $limit = '',
-        $checkAccess = true
-    ) {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        $documentChildren = SiteContent::query()->withTrashed()->whereIn('site_content.id', $ids);
-        if ($published !== 'all') {
-            $documentChildren = $documentChildren->where('site_content.published', $published);
-        }
-        if ($deleted !== 'all') {
-            $documentChildren = $documentChildren->where('site_content.deleted', $deleted);
-        }
-
-        if (is_string($where) && $where != '') {
-            $documentChildren = $documentChildren->whereRaw($where);
-        } elseif (is_array($where)) {
-            $documentChildren = $documentChildren->where($where);
-        }
-
-        $fields = array_filter(array_map('trim', explode(',', $fields)));
-        foreach ($fields as $key => $value) {
-            if (stristr($value, '.') === false) {
-                $fields[$key] = 'site_content.' . $value;
-            }
-        }
-        $documentChildren = $documentChildren->select($fields);
-
-        // modify field names to use sc. table reference
-        if ($sort != '') {
-            $sort = 'site_content.' . implode(',site_content.', array_filter(array_map('trim', explode(',', $sort))));
-            $documentChildren = $documentChildren->orderBy($sort, $dir);
-        }
-
-        if ($checkAccess) {
-            $documentChildren->withoutProtected();
-        }
-
-        if (is_numeric($limit)) {
-            $documentChildren = $documentChildren->take($limit);
-        }
-        $resourceArray = $documentChildren->get()->toArray();
-
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $resourceArray;
-
-        return $resourceArray;
-    }
-
-    /**
-     * getDocument
-     *
-     * @param int $id {integer}
-     * - Id of a document which data has to be gained. @required
-     * @param string $fields {comma separated string; '*'}
-     * - Comma separated list of document fields to get. Default: '*'.
-     * @param int $published {0; 1; 'all'}
-     * - Document publication status. Once the parameter equals 'all', the result will be returned regardless of whether the documents are published or they are not. Default: false.
-     * @param int $deleted {0; 1; 'all'}
-     * - Document removal status. Once the parameter equals 'all', the result will be returned regardless of whether the documents are deleted or they are not. Default: 0.
-     * @param boolean $checkAccess Default: true
-     *
-     * @return bool {array; false} - Result array with fields or false.
-     * - Result array with fields or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.0.1 (2014-02-19)
-     *
-     * @desc Returns required fields of a document.
-     *
-     */
-    public function getDocument($id = 0, $fields = '*', $published = 1, $deleted = 0, bool $checkAccess = true)
-    {
-        if ($id == 0) {
-            return false;
-        }
-
-        $docs = $this->getDocuments([$id], $published, $deleted, $fields, '', '', '', 1, $checkAccess);
-
-        if ($docs != false) {
-            return $docs[0];
-        }
-
-        return false;
-    }
-
-    /**
-     * @param string $field
-     * @param string $docid
-     *
-     * @return bool|mixed
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getField($field = 'content', $docid = '')
-    {
-        if (empty($docid) && isset($this->documentIdentifier)) {
-            $docid = $this->documentIdentifier;
-        } elseif (!preg_match('@^\d+$@', $docid)) {
-            $docid = app('evo.url')->getIdFromAlias($docid);
-        }
-
-        if (empty($docid)) {
-            return false;
-        }
-
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        $doc = $this->getDocumentObject('id', $docid);
-        if (is_array($doc[$field])) {
-            $tvs = $this->getTemplateVarOutput($field, $docid, 'all');
-            $content = $tvs[$field];
-        } else {
-            $content = $doc[$field];
-        }
-
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $content;
-
-        return $content;
-    }
-
-    /**
-     * Returns the page information as database row, the type of result is
-     * defined with the parameter $rowMode
-     *
-     * @param int $pageid The parent document identifier
-     *                    Default: -1 (no result)
-     * @param int $active Should we fetch only published and undeleted documents/resources?
-     *                     1 = yes, 0 = no
-     *                     Default: 1
-     * @param string $fields List of fields
-     *                       Default: id, pagetitle, description, alias
-     * @param boolean $checkAccess Default: true
-     *
-     * @return boolean|array
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getPageInfo(
-        $pageid = -1,
-        $active = 1,
-        $fields = 'site_content.id, site_content.pagetitle, site_content.description, site_content.alias',
-        $checkAccess = true)
-    {
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
-            return $this->tmpCache[__FUNCTION__][$cacheKey];
-        }
-
-        if ($pageid == 0) {
-            return false;
-        }
-
-        $fields = array_filter(array_map('trim', explode(',', $fields)));
-        foreach ($fields as $key => $value) {
-            if (stristr($value, '.') === false) {
-                $fields[$key] = 'site_content.' . $value;
-            }
-        }
-        $pageInfo = SiteContent::query()->select($fields)
-            ->where('site_content.id', $pageid);
-        if ($active == 1) {
-            $pageInfo = $pageInfo
-                ->where('site_content.published', 1)
-                ->where('site_content.deleted', 0);
-        }
-        if ($checkAccess) {
-            $pageInfo->withoutProtected();
-        }
-        $pageInfo = $pageInfo->first();
-        if (!is_null($pageInfo)) {
-            $pageInfo = $pageInfo->toArray();
-        }
-
-        $this->tmpCache[__FUNCTION__][$cacheKey] = $pageInfo;
-
-        return $pageInfo;
-    }
-
-    /**
-     * Returns the parent document/resource of the given docid
-     *
-     * @param int $pid The parent docid. If -1, then fetch the current document/resource's parent
-     *                 Default: -1
-     * @param int $active Should we fetch only published and undeleted documents/resources?
-     *                     1 = yes, 0 = no
-     *                     Default: 1
-     * @param string $fields List of fields
-     *                       Default: id, pagetitle, description, alias
-     * @param boolean $checkAccess true
-     *
-     * @return boolean|array
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getParent(
-        $pid = -1,
-        $active = 1,
-        $fields = 'id, pagetitle, description, alias, parent',
-        $checkAccess = true)
-    {
-        if ($pid == -1) {
-            $pid = $this->documentObject['parent'];
-
-            return ($pid == 0) ? false : $this->getPageInfo($pid, $active, $fields, $checkAccess);
-        }
-
-        if ($pid == 0) {
-            return false;
-        }
-
-        // first get the child document
-        $child = $this->getPageInfo($pid, $active, "parent", $checkAccess);
-        // now return the child's parent
-        $pid = ($child['parent']) ? $child['parent'] : 0;
-
-        return ($pid == 0) ? false : $this->getPageInfo($pid, $active, $fields, $checkAccess);
-    }
-
-    /**
-     * Returns the id of the current snippet.
-     *
-     * @return int
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getSnippetId()
-    {
-        if ($this->currentSnippet) {
-            $snippetId =
-                Models\SiteSnippet::select('id')->where('name', $this->currentSnippet)->first()->id;
-            if ($snippetId) {
-                return $snippetId;
-            }
-        }
-
-        return 0;
-    }
-
-    /**
-     * Returns the name of the current snippet.
-     *
-     * @return string
-     */
-    public function getSnippetName()
-    {
-        return $this->currentSnippet;
-    }
-
-    /**
-     * Clear the cache of MODX.
-     *
-     * @param string $type
-     * @param bool $report
-     *
-     * @return void
-     */
-    public function clearCache($type = '', $report = false)
-    {
-        $cache_dir = $this->bootstrapPath();
-
-        /*$this['command.view.clear']->handle();*/
-        $path = $this['config']['view.compiled'];
-        if ($path) {
-            foreach ($this['files']->glob("$path/*") as $view) {
-                $this['files']->delete($view);
-            }
-        }
-
-        if (is_array($type)) {
-            foreach ($type as $_) {
-                $this->clearCache($_, $report);
-            }
-        } elseif ($type === 'full') {
-            $sync = new Legacy\Cache();
-            $sync->setCachePath($cache_dir);
-            $sync->setReport($report);
-            $sync->emptyCache();
-        } elseif (preg_match('@^[1-9]\d*$@', $type)) {
-            $key = ($this->getConfig('cache_type') == 2) ? $this->makePageCacheKey($type) : $type;
-            $file_name = "docid_" . $key . "_*.pageCache.php";
-            $cache_path = $cache_dir . $file_name;
-            $files = glob($cache_path);
-            $files[] = $cache_dir . "docid_" . $key . ".pageCache.php";
-            foreach ($files as $file) {
-                if (!is_file($file)) {
-                    continue;
-                }
-                unlink($file);
-            }
-        } else {
-            $files = glob($cache_dir . '*');
-            foreach ($files as $file) {
-                $name = basename($file);
-                if (!str_contains($name, '.pageCache.php')) {
-                    continue;
-                }
-                if (!is_file($file)) {
-                    continue;
-                }
-                unlink($file);
-            }
-        }
-    }
-
-    /**
-     * @deprecated use UrlProcessor::makeUrl()
-     */
-    public function makeUrl($id, $alias = '', $args = '', $scheme = '')
-    {
-        return app('evo.url')->makeUrl((int) $id, $alias, $args, $scheme);
-    }
-
-    /**
-     * @deprecated use UrlProcessor::getAliasListing()
-     */
-    public function getAliasListing($id)
-    {
-        return app('evo.url')->getAliasListing($id);
-    }
-
-    /**
-     * Returns the Evolution CMS version information as version, branch, release date and full application name.
-     *
-     * @param null $data
-     *
-     * @return string|array
-     */
-
-    public function getVersionData($data = null)
-    {
-        if (empty($this->version) || !is_array($this->version)) {
-            //include for compatibility modx version < 1.0.10
-            $version = include EVO_CORE_PATH . 'factory/version.php';
-            $this->version = $version;
-            $this->version['new_version'] = $this->getConfig('newversiontext', '');
-        }
-
-        return ($data !== null && \is_array($this->version) && isset($this->version[$data])) ?
-            $this->version[$data] : $this->version;
-    }
-
-    /**
-     * Executes a snippet.
-     *
-     * @param string $snippetName
-     * @param array $params Default: Empty array
-     * @param int $cacheTime
-     * @param string $cacheKey
-     *
-     * @return string
-     */
-    public function runSnippet($snippetName, $params = [], $cacheTime = false, $cacheKey = false)
-    {
         if (is_numeric($cacheTime) && $this->getConfig('enable_cache')) {
             $arrPlaceholderCheck = $this->placeholders;
             if (!is_string($cacheKey)) {
@@ -4537,13 +3678,116 @@ class Evo
     }
 
     /**
-     * Returns the chunk content for the given chunk name
+     * @param $subject
+     * @param string $prefix
      *
-     * @param string $chunkName
-     *
-     * @return boolean|string
+     * @return void
      */
-    public function getChunk($chunkName)
+    public function toPlaceholders($subject, string $prefix = ''): void
+    {
+        if (is_object($subject)) {
+            $subject = get_object_vars($subject);
+        }
+        if (is_array($subject)) {
+            foreach ($subject as $key => $value) {
+                $this->toPlaceholder($key, $value, $prefix);
+            }
+        }
+    }
+
+    /**
+     * @param $key
+     * @param $value
+     * @param string $prefix
+     *
+     * @return void
+     */
+    public function toPlaceholder($key, $value, string $prefix = ''): void
+    {
+        if (is_array($value) || is_object($value)) {
+            $this->toPlaceholders($value, $prefix . $key . '.');
+        } else {
+            $this->setPlaceholder($prefix . $key, $value);
+        }
+    }
+
+    /**
+     * @param $name
+     * @param $value
+     *
+     * @return void
+     */
+    public function setPlaceholder($name, $value): void
+    {
+        $this->placeholders[$name] = $value;
+    }
+
+    /**
+     * @param string $content
+     * @param array|null $ph
+     *
+     * @return string
+     */
+    public function mergePlaceholderContent(string $content, array $ph = null): string
+    {
+        if ($this->getConfig('enable_at_syntax')) {
+            if (stripos($content, '<@LITERAL>') !== false) {
+                $content = $this->escapeLiteralTagsContent($content);
+            }
+        }
+
+        if (!Str::contains($content, '[+')) {
+            return $content;
+        }
+
+        if (empty($ph)) {
+            $ph = $this->placeholders;
+        }
+
+        if ($this->getConfig('enable_at_syntax')) {
+            $content = $this->mergeConditionalTagsContent($content);
+        }
+
+        $content = $this->mergeDocumentContent($content);
+        $content = $this->mergeSettingsContent($content);
+        $matches = $this->getTagsFromContent($content);
+
+        if (empty($matches)) {
+            return $content;
+        }
+
+        foreach ($matches[1] as $i => $key) {
+            [$key, $modifiers] = $this->splitKeyAndFilter($key);
+
+            if (isset($ph[$key])) {
+                $value = $ph[$key];
+            } elseif ($key === 'phx') {
+                $value = '';
+            } else {
+                continue;
+            }
+
+            if ($modifiers !== false) {
+                $modifiers = $this->mergePlaceholderContent($modifiers);
+                $value = $this->applyFilter($value, $modifiers, $key);
+            }
+            $s = &$matches[0][$i];
+            if (Str::contains($content, $s)) {
+                $content = str_replace($s, $value, $content);
+            } elseif ($this->debug) {
+                $this->addLog('mergePlaceholderContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param $chunkName
+     *
+     * @return mixed|string|null
+     */
+    public function getChunk($chunkName): mixed
     {
         $out = null;
         if (empty($chunkName)) {
@@ -4562,43 +3806,112 @@ class Evo
     }
 
     /**
-     * @param string|object $processor
+     * @param string $chunkName
+     * @param array $chunkArr
+     * @param string $prefix
+     * @param string $suffix
      *
-     * @return bool
+     * @return array|false|mixed|string|string[]
      */
-    public function isChunkProcessor($processor)
+    public function parseChunk(
+        string $chunkName,
+        array $chunkArr = [],
+        string $prefix = '{',
+        string $suffix = '}'): mixed
     {
-        $value = (string) $this->getConfig('chunk_processor');
-        if (is_object($processor)) {
-            $processor = get_class($processor);
-        }
-
-        return is_scalar($processor) && mb_strtolower($value) === mb_strtolower($processor) &&
-            class_exists($processor, false);
+        return $prefix === '[+' && $suffix === '+]' && $this->isChunkProcessor('DLTemplate')
+            ?
+            app('evo.tpl')->parseChunk($chunkName, $chunkArr)
+            :
+            $this->parseText($this->getChunk($chunkName), $chunkArr, $prefix, $suffix);
     }
 
     /**
-     * parseText
+     * @param string $str
      *
+     * @return string
+     */
+    public function atBindFileContent(string $str = ''): string
+    {
+        if (stripos($str, '@FILE') !== 0) {
+            return $str;
+        }
+        if (str_contains($str, "\n")) {
+            $str = substr($str, 0, strpos("\n", $str));
+        }
+
+        if ($this->getExtFromFilename($str) === '.php') {
+            return 'Could not retrieve PHP file.';
+        }
+
+        $str = substr($str, 6);
+        $str = trim($str);
+        if (str_contains($str, '\\')) {
+            $str = str_replace('\\', '/', $str);
+        }
+        $str = ltrim($str, '/');
+
+        $errorMsg = "Could not retrieve string '" . $str . "'.";
+
+        $search_path =
+            ['assets/tvs/', 'assets/chunks/', 'assets/templates/', $this->getConfig('rb_base_url') . 'files/', ''];
+        foreach ($search_path as $path) {
+            $file_path = MODX_BASE_PATH . $path . $str;
+            if (str_starts_with($file_path, MODX_MANAGER_PATH)) {
+                return $errorMsg;
+            }
+
+            if (is_file($file_path)) {
+                break;
+            }
+
+            $file_path = false;
+        }
+
+        if (!$file_path) {
+            return $errorMsg;
+        }
+
+        $content = file_get_contents($file_path);
+
+        if ($content === false) {
+            return $errorMsg;
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param $str
+     *
+     * @return false|string
+     */
+    public function getExtFromFilename($str): bool|string
+    {
+        $str = strtolower(trim($str));
+        $pos = strrpos($str, '.');
+        if ($pos === false) {
+            return false;
+        }
+
+        return substr($str, $pos);
+    }
+
+    /**
      * @param string $tpl
      * @param array $ph
      * @param string $left
      * @param string $right
      * @param bool $execModifier
      *
-     * @return string {string} - Parsed text.
-     * - Parsed text.
-     * @version 1.0 (2013-10-17)
-     *
-     * @desc Replaces placeholders in text with required values.
-     *
-     * @internal param $chunk {string} - String to parse. - String to parse. @required
-     * @internal param $chunkArr {array} - Array of values. Key — placeholder name, value — value. - Array of values. Key — placeholder name, value — value. @required
-     * @internal param $prefix {string} - Placeholders prefix. Default: '[+'. - Placeholders prefix. Default: '[+'.
-     * @internal param $suffix {string} - Placeholders suffix. Default: '+]'. - Placeholders suffix. Default: '+]'.
-     *
+     * @return string
      */
-    public function parseText($tpl = '', $ph = [], $left = '[+', $right = '+]', $execModifier = true)
+    public function parseText(
+        string $tpl = '',
+        array $ph = [],
+        string $left = '[+',
+        string $right = '+]',
+        bool $execModifier = true): string
     {
         if (empty($ph) || empty($tpl)) {
             return $tpl;
@@ -4615,7 +3928,7 @@ class Evo
             return $tpl;
         }
         foreach ($matches[1] as $i => $key) {
-            if (strpos($key, ':') !== false && $execModifier) {
+            if (str_contains($key, ':') && $execModifier) {
                 [$key, $modifiers] = $this->splitKeyAndFilter($key);
             } else {
                 $modifiers = false;
@@ -4630,12 +3943,12 @@ class Evo
 
             $s = &$matches[0][$i];
             if ($modifiers !== false) {
-                if (strpos($modifiers, $left) !== false) {
+                if (str_contains($modifiers, $left)) {
                     $modifiers = $this->parseText($modifiers, $ph, $left, $right);
                 }
                 $value = $this->applyFilter($value, $modifiers, $key);
             }
-            if (strpos($tpl, $s) !== false) {
+            if (str_contains($tpl, $s)) {
                 $tpl = str_replace($s, $value, $tpl);
             } elseif ($this->debug) {
                 $this->addLog('parseText parse error', $_SERVER['REQUEST_URI'] . $s, 2);
@@ -4646,1435 +3959,182 @@ class Evo
     }
 
     /**
-     * parseChunk
-     *
-     * @param $chunkName {string} - Name of chunk to parse. @required
-     * @param $chunkArr {array} - Array of values. Key — placeholder name, value — value. @required
-     * @param string $prefix {string}
-     * - Placeholders prefix. Default: '{'.
-     * @param string $suffix {string}
-     * - Placeholders suffix. Default: '}'.
-     *
-     * @return bool|mixed|string {string; false} - Parsed chunk or false if $chunkArr is not array.
-     * - Parsed chunk or false if $chunkArr is not array.
-     * @version 1.1 (2013-10-17)
-     *
-     * @desc Replaces placeholders in a chunk with required values.
-     *
-     */
-    public function parseChunk($chunkName, $chunkArr, $prefix = '{', $suffix = '}')
-    {
-        //TODO: Wouldn't it be more practical to return the contents of a chunk instead of false?
-        if (!is_array($chunkArr)) {
-            return false;
-        }
-
-        return $prefix === '[+' && $suffix === '+]' && $this->isChunkProcessor('DLTemplate')
-            ?
-            app('evo.tpl')->parseChunk($chunkName, $chunkArr)
-            :
-            $this->parseText($this->getChunk($chunkName), $chunkArr, $prefix, $suffix);
-    }
-
-    /**
-     * getTpl
-     * get template for snippets
-     *
-     * @param $tpl {string}
-     *
-     * @return bool|string {string}
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getTpl($tpl)
-    {
-        $template = $tpl;
-        $command = '';
-        if (preg_match("/^@([^:\s]+)[:\s]+(.+)$/s", trim($tpl), $match)) {
-            $command = strtoupper($match[1]);
-            $template = $match[2];
-        }
-        switch ($command) {
-            case 'CODE':
-                break;
-            case 'FILE':
-                $template = file_get_contents(MODX_BASE_PATH . $template);
-                break;
-            case 'CHUNK':
-                $template = $this->getChunk($template);
-                break;
-            case 'DOCUMENT':
-                $doc = $this->getDocument($template, 'content', 'all');
-                $template = $doc['content'];
-                break;
-            case 'SELECT':
-                $this->getDatabase()->getValue($this->getDatabase()->query("SELECT {$template}"));
-                break;
-            default:
-                if (!($template = $this->getChunk($tpl))) {
-                    $template = $tpl;
-                }
-        }
-
-        return $template;
-    }
-
-    /**
-     * Returns the timestamp in the date format defined in $this->config['datetime_format']
-     *
-     * @param int $timestamp Default: 0
-     * @param string $mode Default: Empty string (adds the time as below). Can also be 'dateOnly' for no time or 'formatOnly' to get the datetime_format string.
+     * @param bool $noEvent
+     * @param bool $postParse
      *
      * @return string
      */
-    public function toDateFormat($timestamp = 0, $mode = '')
+    public function outputContent(bool $noEvent = false, bool $postParse = true): string
     {
-        $strTime = '-';
+        $this->documentOutput = $this->documentContent;
 
-        if (is_null($timestamp)) {
-            $timestamp = '';
-        } else {
-            $timestamp = trim((string) $timestamp);
-        }
-
-        if ($mode !== 'formatOnly' && empty($timestamp)) {
-            return $strTime;
-        }
-
-        $timestamp = (int) $timestamp;
-
-        switch ($this->config['datetime_format']) {
-            case 'YYYY/mm/dd':
-                $dateFormat = 'Y/m/d';
-                break;
-            case 'dd-mm-YYYY':
-                $dateFormat = 'd-m-Y';
-                break;
-            case 'mm/dd/YYYY':
-                $dateFormat = 'm/d/Y';
-                break;
-        }
-
-        if (empty($mode)) {
-            $strTime = date($dateFormat . " H:i:s", $timestamp);
-        } elseif ($mode == 'dateOnly') {
-            $strTime = date($dateFormat, $timestamp);
-        } elseif ($mode == 'timeOnly') {
-            $strTime = date('H:i:s', $timestamp);
-        } elseif ($mode == 'formatOnly') {
-            $strTime = $dateFormat;
-        }
-
-        return $strTime;
-    }
-
-    /**
-     * Make a timestamp from a string corresponding to the format in $this->config['datetime_format']
-     *
-     * @param string $str
-     *
-     * @return string
-     */
-    public function toTimeStamp($str)
-    {
-        $str = trim($str);
-        if (empty($str)) {
-            return '';
-        }
-
-        switch ($this->getConfig('datetime_format')) {
-            case 'YYYY/mm/dd':
-                if (!preg_match('/^\d{4}\/\d{2}\/\d{2}[\d :]*$/', $str)) {
-                    return '';
-                }
-                [$Y, $m, $d, $H, $M, $S] = sscanf($str, '%4d/%2d/%2d %2d:%2d:%2d');
-                break;
-            case 'dd-mm-YYYY':
-                if (!preg_match('/^\d{2}-\d{2}-\d{4}[\d :]*$/', $str)) {
-                    return '';
-                }
-                [$d, $m, $Y, $H, $M, $S] = sscanf($str, '%2d-%2d-%4d %2d:%2d:%2d');
-                break;
-            case 'mm/dd/YYYY':
-                if (!preg_match('/^\d{2}\/\d{2}\/\d{4}[\d :]*$/', $str)) {
-                    return '';
-                }
-                [$m, $d, $Y, $H, $M, $S] = sscanf($str, '%2d/%2d/%4d %2d:%2d:%2d');
-                break;
-            /*
-    case 'dd-mmm-YYYY':
-    if (!preg_match('/^[0-9]{2}-[0-9a-z]+-[0-9]{4}[0-9 :]*$/i', $str)) {return '';}
-    list ($m, $d, $Y, $H, $M, $S) = sscanf($str, '%2d-%3s-%4d %2d:%2d:%2d');
-    break;
-     */
-        }
-        if (!$H && !$M && !$S) {
-            $H = 0;
-            $M = 0;
-            $S = 0;
-        }
-        $timeStamp = mktime($H, $M, $S, $m, $d, $Y);
-        $timeStamp = (int) $timeStamp;
-
-        return $timeStamp;
-    }
-
-    /**
-     * Get the TVs of a document's children. Returns an array where each element represents one child doc.
-     *
-     * Ignores deleted children. Gets all children - there is no where clause available.
-     *
-     * @param int $parentid The parent docid
-     *                 Default: 0 (site root)
-     * @param array $tvidnames . Which TVs to fetch - Can relate to the TV ids in the db (array elements should be numeric only)
-     *                                               or the TV names (array elements should be names only)
-     *                      Default: Empty array
-     * @param int $published Whether published or unpublished documents are in the result
-     *                      Default: 1
-     * @param string $docsort How to sort the result array (field)
-     *                      Default: menuindex
-     * @param ASC|string $docsortdir How to sort the result array (direction)
-     *                      Default: ASC
-     * @param string $tvfields Fields to fetch from site_tmplvars, default '*'
-     *                      Default: *
-     * @param string $tvsort How to sort each element of the result array i.e. how to sort the TVs (field)
-     *                      Default: rank
-     * @param string $tvsortdir How to sort each element of the result array i.e. how to sort the TVs (direction)
-     *                      Default: ASC
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array|bool
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     */
-    public function getDocumentChildrenTVars(
-        $parentid = 0,
-        $tvidnames = [],
-        $published = 1,
-        $docsort = "menuindex",
-        $docsortdir = "ASC",
-        $tvfields = "*",
-        $tvsort = "rank",
-        $tvsortdir = "ASC",
-        $checkAccess = true)
-    {
-        $docs = $this->getDocumentChildren($parentid, $published, 0, '*', '', $docsort, $docsortdir, '', $checkAccess);
-        if (!$docs) {
-            return false;
-        }
-
-        $result = [];
-        // get user defined template variables
-        if ($tvfields) {
-            $_ = array_filter(array_map('trim', explode(',', $tvfields)));
-            foreach ($_ as $i => $v) {
-                if ($v === 'value') {
-                    unset($_[$i]);
-                } else {
-                    $_[$i] = 'tv.' . $v;
-                }
+        if ($this->documentGenerated == 1
+            && $this->documentObject['cacheable'] == 1
+            && $this->documentObject['type'] === 'document'
+            && $this->documentObject['published'] == 1
+        ) {
+            if ($this->sjscripts) {
+                $this->documentObject['__MODxSJScripts__'] = $this->sjscripts;
             }
-            $fields = implode(',', $_);
-        } else {
-            $fields = "tv.*";
+            if ($this->jscripts) {
+                $this->documentObject['__MODxJScripts__'] = $this->jscripts;
+            }
         }
 
-        if ($tvsort != '') {
-            $tvsort = 'tv.' . implode(',tv.', array_filter(array_map('trim', explode(',', $tvsort))));
-        }
-        if ($tvidnames === "*") {
-            $query = "tv.id<>0";
-        } else {
-            $query = (is_numeric($tvidnames[0]) ? "tv.id" : "tv.name") . " IN ('" . implode("','", $tvidnames) . "')";
+        // check for non-cached snippet output
+        if ($postParse && Str::contains($this->documentOutput, '[!')) {
+            $this->recentUpdate = $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time', 0);
+
+            $this->documentOutput = str_replace('[!', '[[', $this->documentOutput);
+            $this->documentOutput = str_replace('!]', ']]', $this->documentOutput);
+            $this->minParserPasses = 2;
+            // Parse document source
+            $this->documentOutput = $this->parseDocumentSource($this->documentOutput);
         }
 
-        foreach ($docs as $doc) {
-            $docid = $doc['id'];
+        // Moved from prepareResponse() by sirlancelot
+        // Insert Startup jscripts & CSS scripts into template - template must have a <head> tag
+        if ($js = $this->getRegisteredClientStartupScripts()) {
+            // change to just before closing </head>
+            // $this->documentContent = preg_replace("/(<head[^>]*>)/i", "\\1\n".$js, $this->documentContent);
+            $this->documentOutput = preg_replace("/(<\/head>)/i", $js . "\n\\1", $this->documentOutput);
+        }
 
-            $rs = $this->db->select(
-                "{$fields}, IF(tvc.value!='',tvc.value,tv.default_text) as value ",
-                "[+prefix+]site_tmplvars tv
-                        INNER JOIN [+prefix+]site_tmplvar_templates tvtpl ON tvtpl.tmplvarid = tv.id
-                        LEFT JOIN [+prefix+]site_tmplvar_contentvalues tvc ON tvc.tmplvarid=tv.id AND tvc.contentid='{$docid}'",
-                "{$query} AND tvtpl.templateid = '{$doc['template']}'",
-                ($tvsort ? "{$tvsort} {$tvsortdir}" : "")
+        // Insert jscripts & html block into template - template must have a </body> tag
+        if ($js = $this->getRegisteredClientScripts()) {
+            $this->documentOutput = preg_replace("/(<\/body>)/i", $js . "\n\\1", $this->documentOutput);
+        }
+        // End fix by sirlancelot
+        if ($postParse) {
+            $this->documentOutput = $this->cleanUpMODXTags($this->documentOutput);
+
+            $this->documentOutput = $this->rewriteUrls($this->documentOutput);
+        }
+
+        // send out content-type and content-disposition headers
+        if (IN_PARSER_MODE == "true") {
+            $type = !empty($this->documentObject['contentType']) ? $this->documentObject['contentType'] : "text/html";
+            header('Content-Type: ' . $type . '; charset=' . $this->getConfig('modx_charset'));
+            // if (($this->documentIdentifier == $this->config['error_page']) || $redirect_error)
+            //   header('HTTP/1.0 404 Not Found');
+            if (!$this->checkPreview() && $this->documentObject['content_dispo'] == 1) {
+                if ($this->documentObject['alias']) {
+                    $name = $this->documentObject['alias'];
+                } else {
+                    // strip title of special characters
+                    $name = $this->documentObject['pagetitle'];
+                    $name = strip_tags($name);
+                    $name = $this->cleanUpMODXTags($name);
+                    $name = strtolower($name);
+                    $name = preg_replace('/&.+?;/', '', $name); // kill entities
+                    $name = preg_replace('/[^\.%a-z0-9 _-]/', '', $name);
+                    $name = preg_replace('/\s+/', '-', $name);
+                    $name = preg_replace('|-+|', '-', $name);
+                    $name = trim($name, '-');
+                }
+                $header = 'Content-Disposition: attachment; filename=' . $name;
+                header($header);
+            }
+        }
+        $this->setConditional();
+
+        $stats = $this->getTimerStats($this->tstart);
+
+        if ($postParse && Str::contains($this->documentOutput, '[^')) {
+            $this->documentOutput = str_replace(
+                ['[^q^]', '[^qt^]', '[^p^]', '[^t^]', '[^s^]', '[^m^]'],
+                [
+                    $stats['queries'],
+                    $stats['queryTime'],
+                    $stats['phpTime'],
+                    $stats['totalTime'],
+                    $stats['source'],
+                    $stats['phpMemory'],
+                ],
+                $this->documentOutput
             );
-            $tvs = $this->db->makeArray($rs);
-
-            // get default/built-in template variables
-            ksort($doc);
-            foreach ($doc as $key => $value) {
-                if ($tvidnames == '*' || in_array($key, $tvidnames)) {
-                    $tvs[] = ['name' => $key, 'value' => $value];
-                }
-            }
-            if (is_array($tvs) && count($tvs)) {
-                $result[] = $tvs;
-            }
         }
 
-        return $result;
-    }
-
-    /**
-     * getDocumentChildrenTVarOutput
-     *
-     * @param int $parentid {integer}
-     * - Id of parent document. Default: 0 (site root).
-     * @param array $tvidnames {array; '*'}
-     * - Which TVs to fetch. In the form expected by getTemplateVarOutput(). Default: [].
-     * @param int $published {0; 1; 'all'}
-     * - Document publication status. Once the parameter equals 'all', the result will be returned regardless of whether the ducuments are published or they are not. Default: 1.
-     * @param string $sortBy {string}
-     * - How to sort the result array (field). Default: 'menuindex'.
-     * @param string $sortDir {'ASC'; 'DESC'}
-     * - How to sort the result array (direction). Default: 'ASC'.
-     * @param string $where {string}
-     * - SQL WHERE condition (use only document fields, not TV). Default: ''.
-     * @param string $resultKey {string; false}
-     * - Field, which values are keys into result array. Use the “false”, that result array keys just will be numbered. Default: 'id'.
-     *
-     * @return array|bool
-     * - Result array, or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.1 (2014-02-19)
-     *
-     * @desc Returns an array where each element represents one child doc and contains the result from getTemplateVarOutput().
-     */
-    public function getDocumentChildrenTVarOutput(
-        $parentid = 0,
-        $tvidnames = [],
-        $published = 1,
-        $sortBy = 'menuindex',
-        $sortDir = 'ASC',
-        $where = '',
-        $resultKey = 'id',
-        $checkAccess = true)
-    {
-        $docs = $this->getDocumentChildren($parentid, $published, 0, 'id', $where, $sortBy, $sortDir, '', $checkAccess);
-
-        if (!$docs) {
-            return false;
+        // invoke OnWebPagePrerender event
+        if (!$noEvent) {
+            $this->invokeEvent('OnWebPagePrerender', ['documentOutput' => &$this->documentOutput]);
         }
 
-        $result = [];
+        $this->documentOutput = removeSanitizeSeed($this->documentOutput);
 
-        $unsetResultKey = false;
-
-        if ($resultKey !== false) {
-            if (is_array($tvidnames)) {
-                if (count($tvidnames) != 0 && !in_array($resultKey, $tvidnames)) {
-                    $tvidnames[] = $resultKey;
-                    $unsetResultKey = true;
-                }
-            } else {
-                if ($tvidnames !== '*' && $tvidnames != $resultKey) {
-                    $tvidnames = [$tvidnames, $resultKey];
-                    $unsetResultKey = true;
-                }
+        if ($postParse) {
+            if (Str::contains($this->documentOutput, '\{')) {
+                $this->documentOutput = $this->RecoveryEscapedTags($this->documentOutput);
+            } elseif (Str::contains($this->documentOutput, '\[')) {
+                $this->documentOutput = $this->RecoveryEscapedTags($this->documentOutput);
             }
         }
 
-        foreach ($docs as $iValue) {
-            $tvs = $this->getTemplateVarOutput($tvidnames, $iValue['id'], $published);
+        $out = $this->documentOutput;
 
-            if ($tvs) {
-                if ($resultKey !== false && array_key_exists($resultKey, $tvs)) {
-                    $result[$tvs[$resultKey]] = $tvs;
+        if ($this->dumpSQL) {
+            $out .= $this->queryCode;
+        }
 
-                    if ($unsetResultKey) {
-                        unset($result[$tvs[$resultKey]][$resultKey]);
-                    }
-                } else {
-                    $result[] = $tvs;
-                }
+        if ($this->dumpSnippets) {
+            $sc = '';
+            $tt = 0;
+            foreach ($this->snippetsTime as $s => $v) {
+                $t = $v['time'];
+                $sname = $v['sname'];
+                $sc .= sprintf('%s. %s (%2.2f ms)<br>', $s, $sname, $t); // currentSnippet
+                $tt += $t;
             }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Modified by Raymond for TV - Orig Modified by Apodigm - DocVars
-     * Returns a single site_content field or TV record from the db.
-     *
-     * If a site content field the result is an associative array of 'name' and 'value'.
-     *
-     * If a TV the result is an array representing a db row including the fields specified in $fields.
-     *
-     * @param string $idname Can be a TV id or name
-     * @param string $fields Fields to fetch from site_tmplvars. Default: *
-     * @param string|type $docid Docid. Defaults to empty string which indicates the current document.
-     * @param int $published Whether published or unpublished documents are in the result
-     *                        Default: 1
-     * @param boolean $checkAccess Default: true
-     *
-     * @return bool
-     */
-    public function getTemplateVar($idname = "", $fields = "*", $docid = "", $published = 1, $checkAccess = true)
-    {
-        if ($idname == "") {
-            return false;
-        }
-
-        $result = $this->getTemplateVars([$idname],
-            $fields,
-            $docid,
-            $published,
-            "",
-            "",
-            $checkAccess); //remove sorting for speed
-
-        return ($result != false) ? $result[0] : false;
-    }
-
-    /**
-     * getTemplateVars
-     *
-     * @param string|array $idnames {array; '*'} - Which TVs to fetch. Can relate to the TV ids in the db (array elements should be numeric only) or the TV names (array elements should be names only). @required
-     * @param string|array $fields {comma separated string; '*'} - Fields names in the TV table of MODx database. Default: '*'
-     * @param int|string $docid {integer; ''} - Id of a document to get. Default: an empty string which indicates the current document.
-     * @param int|string $published {0; 1; 'all'} - Document publication status. Once the parameter equals 'all', the result will be returned regardless of whether the ducuments are published or they are not. Default: 1.
-     * @param string $sort {comma separated string} - Fields of the TV table to sort by. Default: 'rank'.
-     * @param string $dir {'ASC'; 'DESC'} - How to sort the result array (direction). Default: 'ASC'.
-     * @param boolean $checkAccess Default: true
-     *
-     * @return array|bool Result array, or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.0.1 (2014-02-19)
-     *
-     * @desc Returns an array of site_content field fields and/or TV records from the db.
-     * Elements representing a site content field consist of an associative array of 'name' and 'value'.
-     * Elements representing a TV consist of an array representing a db row including the fields specified in $fields.
-     *
-     */
-    public function getTemplateVars(
-        $idnames = [],
-        $fields = '*',
-        $docid = '',
-        $published = 1,
-        $sort = 'rank',
-        $dir = 'ASC',
-        $checkAccess = true)
-    {
-        static $cached = [];
-        $cacheKey = md5(print_r(func_get_args(), true));
-        if (isset($cached[$cacheKey])) {
-            return $cached[$cacheKey];
-        }
-        $cached[$cacheKey] = false;
-
-        if (($idnames !== '*' && !is_array($idnames)) || empty($idnames)) {
-            return false;
-        }
-
-        // get document record
-        if (empty($docid)) {
-            $docid = $this->documentIdentifier;
-            $docRow = $this->documentObject;
-        } else {
-            $docRow = $this->getDocument($docid, '*', $published, 0, $checkAccess);
-
-            if (!$docRow) {
-                $cached[$cacheKey] = false;
-
-                return false;
-            }
-        }
-        $table = $this->getDatabase()->getFullTableName('site_tmplvars');
-        // get user defined template variables
-        if (!empty($fields) && (is_scalar($fields) || \is_array($fields))) {
-            if (\is_scalar($fields)) {
-                $fields = explode(',', $fields);
-            }
-            $fields = array_filter(array_map('trim', $fields), function ($value) {
-                return $value !== 'value';
-            });
-        } else {
-            $fields = ['*'];
-        }
-        $sort = ($sort == '')
-            ? '' : $table . '.' . implode(',' . $table . '.', array_filter(array_map('trim', explode(',', $sort))));
-
-        if ($idnames === '*') {
-            $query = '' . $table . '.id<>0';
-        } else {
-            $query = (is_numeric($idnames[0]) ? '' . $table . '.id' : '' . $table . '.name') . " IN ('" .
-                implode("','", $idnames) . "')";
-        }
-
-        $rs = SiteTmplvar::query()
-            ->select($fields)
-            ->selectRaw(
-                " IF(" . $this->getDatabase()->getConfig('prefix') . "site_tmplvar_contentvalues.value != '', " .
-                $this->getDatabase()->getConfig('prefix') . "site_tmplvar_contentvalues.value, " .
-                $this->getDatabase()->getConfig('prefix') . "site_tmplvars.default_text) as value"
-            )
-            ->join('site_tmplvar_templates', 'site_tmplvar_templates.tmplvarid', '=', 'site_tmplvars.id')
-            ->leftJoin('site_tmplvar_contentvalues', function ($join) use ($docid) {
-                $join->on('site_tmplvar_contentvalues.tmplvarid', '=', 'site_tmplvars.id');
-                $join->on('site_tmplvar_contentvalues.contentid', '=', DB::raw($docid));
-            })
-            ->whereRaw(
-                $query . " AND " . $this->getDatabase()->getConfig('prefix') . "site_tmplvar_templates.templateid = '" .
-                $docRow['template'] . "'"
+            $out .= sprintf(
+                '<fieldset><legend><b>Snippets</b> (%s / %2.2f ms)</legend>%s</fieldset><br />',
+                count($this->snippetsTime),
+                $tt,
+                $sc
             );
-        if ($sort != '') {
-            $rs = $rs->orderByRaw($sort);
+            $out .= $this->snippetsCode;
         }
-        $rs = $rs->get();
 
-        $result = $rs->toArray();
-
-        // get default/built-in template variables
-        if (is_array($docRow)) {
-            ksort($docRow);
-
-            foreach ($docRow as $name => $value) {
-                if ($idnames === '*' || \in_array($name, $idnames)) {
-                    $result[] = compact('name', 'value');
-                }
+        if ($this->dumpPlugins) {
+            $ps = '';
+            $tt = 0;
+            foreach ($this->pluginsTime as $s => $t) {
+                $ps .= sprintf('%s (%2.2f ms)<br>', $s, $t * 1000);
+                $tt += $t;
             }
-        }
-
-        $cached[$cacheKey] = $result;
-
-        return $result;
-    }
-
-    /**
-     * getTemplateVarOutput
-     *
-     * @param array $idnames {array; '*'}
-     * - Which TVs to fetch - Can relate to the TV ids in the db (array elements should be numeric only) or the TV names (array elements should be names only). @required
-     * @param string $docid {integer; ''}
-     * - Id of a document to get. Default: an empty string which indicates the current document.
-     * @param int $published {0; 1; 'all'}
-     * - Document publication status. Once the parameter equals 'all', the result will be returned regardless of whether the ducuments are published or they are not. Default: 1.
-     * @param string $sep {string}
-     * - Separator that is used while concatenating in getTVDisplayFormat(). Default: ''.
-     *
-     * @return array|bool - Result array, or false.
-     * - Result array, or false.
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws UnknownFetchTypeException
-     * @version 1.0.1 (2014-02-19)
-     *
-     * @desc Returns an associative array containing TV rendered output values.
-     */
-    public function getTemplateVarOutput($idnames = [], $docid = '', $published = 1, $sep = '')
-    {
-        if (is_array($idnames) && empty($idnames)) {
-            return false;
-        }
-
-        $output = [];
-        $vars = ($idnames === '*' || is_array($idnames)) ? $idnames : [$idnames];
-
-        if ((int) $docid > 0) {
-            $docid = (int) $docid;
-        } else {
-            $docid = $this->documentIdentifier;
-        }
-        // remove sort for speed
-        $result = $this->getTemplateVars($vars, '*', $docid, $published, '', '');
-
-        if ($result == false) {
-            return false;
-        }
-
-        foreach ($result as $iValue) {
-            $row = $iValue;
-
-            if (!isset($row['id']) or !$row['id']) {
-                $output[$row['name']] = $row['value'];
-            } else {
-                $output[$row['name']] = getTVDisplayFormat(
-                    $row['name'],
-                    $row['value'],
-                    $row['display'],
-                    $row['display_params'],
-                    $row['type'],
-                    $docid,
-                    $sep
-                );
-            }
-        }
-
-        return $output;
-    }
-
-    /**
-     * Returns the full table name based on db settings
-     *
-     * @param string $tbl Table name
-     *
-     * @return string Table name with prefix
-     * @deprecated use ->getDatabase()->getFullTableName()
-     */
-    public function getFullTableName($tbl)
-    {
-        return $this->getDatabase()->getFullTableName($tbl);
-    }
-
-    /**
-     * Returns the placeholder value
-     *
-     * @param string $name Placeholder name
-     *
-     * @return string Placeholder value
-     */
-    public function getPlaceholder($name)
-    {
-        return isset($this->placeholders[$name]) ? $this->placeholders[$name] : null;
-    }
-
-    /**
-     * Sets a value for a placeholder
-     *
-     * @param string $name The name of the placeholder
-     * @param string $value The value of the placeholder
-     */
-    public function setPlaceholder($name, $value)
-    {
-        $this->placeholders[$name] = $value;
-    }
-
-    /**
-     * Set placeholders en masse via an array or object.
-     *
-     * @param object|array $subject
-     * @param string $prefix
-     */
-    public function toPlaceholders($subject, $prefix = '')
-    {
-        if (is_object($subject)) {
-            $subject = get_object_vars($subject);
-        }
-        if (is_array($subject)) {
-            foreach ($subject as $key => $value) {
-                $this->toPlaceholder($key, $value, $prefix);
-            }
-        }
-    }
-
-    /**
-     * For use by toPlaceholders(); For setting an array or object element as placeholder.
-     *
-     * @param string $key
-     * @param object|array $value
-     * @param string $prefix
-     */
-    public function toPlaceholder($key, $value, $prefix = '')
-    {
-        if (is_array($value) || is_object($value)) {
-            $this->toPlaceholders($value, "{$prefix}{$key}.");
-        } else {
-            $this->setPlaceholder("{$prefix}{$key}", $value);
-        }
-    }
-
-    /**
-     * Returns current user id.
-     *
-     * @param string $context . Default is an empty string which indicates the method should automatically pick 'web (frontend) or 'mgr' (backend)
-     *
-     * @return bool|int
-     */
-    public function getLoginUserID($context = '')
-    {
-        if (app()->runningInConsole() && defined('EVO_CLI_USER')) {
-            return EVO_CLI_USER;
-        }
-        $out = false;
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        if (isset($_SESSION[$context . 'Validated'])) {
-            $out = $_SESSION[$context . 'InternalKey'];
+            $out .= sprintf(
+                '<fieldset><legend><b>Plugins</b> (%s / %2.2f ms)</legend>%s</fieldset><br />',
+                count($this->pluginsTime),
+                $tt * 1000,
+                $ps
+            );
+            $out .= $this->pluginsCode;
         }
 
         return $out;
     }
 
     /**
-     * Returns current user name
-     *
-     * @param string $context . Default is an empty string which indicates the method should automatically pick 'web (frontend) or 'mgr' (backend)
-     *
      * @return string
      */
-    public function getLoginUserName($context = '')
+    public function getRegisteredClientStartupScripts(): string
     {
-        $out = false;
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        if (isset($_SESSION[$context . 'Validated'])) {
-            $out = $_SESSION[$context . 'Shortname'];
-        }
-
-        return $out;
-    }
-
-    /**
-     * Returns current login user type - web or manager
-     *
-     * @return string
-     */
-    public function getLoginUserType($context = '')
-    {
-        if (empty($context)) {
-            $context = $this->getContext();
-        }
-        if ($context == 'mgr' && isset($_SESSION['mgrValidated'])) {
-            return 'manager';
-        } elseif ($context == 'web' && isset($_SESSION['webValidated'])) {
-            return 'web';
-        }
-
-        return '';
+        return implode("\n", $this->sjscripts);
     }
 
     /**
      * @return string
      */
-    public function getContext(): string
+    public function getRegisteredClientScripts(): string
     {
-        if (empty($this->context)) {
-            $out = $this->isFrontend() ? 'web' : 'mgr';
-        } else {
-            $out = $this->context;
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param $context
-     */
-    public function setContext($context)
-    {
-        if (is_scalar($context)) {
-            $this->context = $context;
-        }
-    }
-
-    /**
-     * Returns a user info record for the given manager user
-     *
-     * @param int $uid
-     *
-     * @return boolean|string
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getUserInfo($uid)
-    {
-        if (isset($this->tmpCache[__FUNCTION__][$uid])) {
-            return $this->tmpCache[__FUNCTION__][$uid];
-        }
-
-        $row = User::select('users.username', 'users.password', 'user_attributes.*')
-            ->join('user_attributes', 'users.id', '=', 'user_attributes.internalKey')
-            ->where('users.id', $uid)->first();
-
-        if (is_null($row)) {
-            return $this->tmpCache[__FUNCTION__][$uid] = false;
-        }
-
-        $row = $row->toArray();
-
-        if (!isset($row['usertype']) || !$row['usertype']) {
-            $row['usertype'] = 'manager';
-        }
-
-        $this->tmpCache[__FUNCTION__][$uid] = $row;
-
-        return $row;
-    }
-
-    /**
-     * Returns a record for the web user
-     *
-     * @param int $uid
-     *
-     * @return boolean|string
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getWebUserInfo($uid)
-    {
-        return $this->getUserInfo($uid);
-    }
-
-    /**
-     * Returns an array of document groups that current user is assigned to.
-     * This function will first return the web user doc groups when running from
-     * frontend otherwise it will return manager user's docgroup.
-     *
-     * @param boolean $resolveIds Set to true to return the document group names
-     *                            Default: false
-     *
-     * @return string|array
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getUserDocGroups($resolveIds = false)
-    {
-        $context = $this->getContext();
-        if (isset($_SESSION[$context . 'Docgroups']) && isset($_SESSION[$context . 'Validated'])) {
-            $dg = $_SESSION[$context . 'Docgroups'];
-            $dgn = isset($_SESSION[$context . 'DocgrpNames']) ? $_SESSION[$context . 'DocgrpNames'] : false;
-        } else {
-            $dg = '';
-        }
-        if (!$resolveIds) {
-            return $dg;
-        }
-
-        if (is_array($dgn)) {
-            return $dgn;
-        }
-
-        if (is_array($dg)) {
-            // resolve ids to names
-            $dgn = [];
-            $ds = Models\DocumentgroupName::select('name')
-                ->whereIn('id', $dg)
-                ->get();
-
-            foreach ($ds as $row) {
-                $dgn[] = $row->name;
-            }
-            // cache docgroup names to session
-            $_SESSION[$context . 'DocgrpNames'] = $dgn;
-
-            return $dgn;
-        }
-    }
-
-    /**
-     * Change current web user's password
-     *
-     * @param string $oldPwd
-     * @param string $newPwd
-     *
-     * @return string|boolean Returns true if successful, oterhwise return error
-     *                        message
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @todo Make password length configurable, allow rules for passwords and translation of messages
-     */
-    public function changeWebUserPassword($oldPwd, $newPwd)
-    {
-        if ($_SESSION['webValidated'] != 1) {
-            return false;
-        }
-        $ds = Models\User::selectRaw('id, username, password')
-            ->where('id', (int) $this->getLoginUserID())
-            ->first();
-
-        $row = $ds->toArray();
-        if (!$row) {
-            return false;
-        }
-
-        if ($row['password'] !== md5($oldPwd)) {
-            return 'Incorrect password.';
-        }
-        if (strlen($newPwd) < 6) {
-            return 'Password is too short!';
-        }
-
-        if ($newPwd == '') {
-            return "You didn't specify a password for this user!";
-        }
-
-        Models\User::where('id', (int) $this->getLoginUserID())
-            ->update([
-                'password' => $newPwd,
-            ]);
-
-        // invoke OnWebChangePassword event
-        $this->invokeEvent('OnWebChangePassword', [
-            'userid' => $row['id'],
-            'username' => $row['username'],
-            'userpassword' => $newPwd,
-        ]);
-
-        return true;
-    }
-
-    /**
-     * Returns true if the current web user is a member the specified groups
-     *
-     * @param array $groupNames
-     *
-     * @return boolean
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     */
-    public function isMemberOfWebGroup($groupNames = [])
-    {
-        if (!is_array($groupNames)) {
-            return false;
-        }
-
-        $grpNames = isset($_SESSION['mgrUserGroupNames']) ? $_SESSION['mgrUserGroupNames'] : false;
-        if (!is_array($grpNames)) {
-            $grpNames = MembergroupName::query()
-                ->join('member_groups', 'membergroup_names.id', '=', 'member_groups.user_group')
-                ->where('member_groups.member', $this->getLoginUserID())
-                ->pluck('membergroup_names.name')->toArray();
-
-            // save to cache
-            $_SESSION['webUserGroupNames'] = $grpNames;
-        }
-        foreach ($groupNames as $k => $v) {
-            if (in_array(trim($v), $grpNames, true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Registers Client-side CSS scripts - these scripts are loaded at inside
-     * the <head> tag
-     *
-     * @param string $src
-     * @param string $media Default: Empty string
-     *
-     * @return void
-     */
-    public function regClientCSS($src, $media = '')
-    {
-        if (empty($src) || isset($this->loadedjscripts[$src])) {
-            return;
-        }
-        $nextpos = max(array_merge([0], array_keys($this->sjscripts))) + 1;
-        $this->loadedjscripts[$src]['startup'] = true;
-        $this->loadedjscripts[$src]['version'] = '0';
-        $this->loadedjscripts[$src]['pos'] = $nextpos;
-        if (stripos($src, '<style') !== false || stripos($src, '<link') !== false) {
-            $this->sjscripts[$nextpos] = $src;
-        } else {
-            $this->sjscripts[$nextpos] = "\t" . '<link rel="stylesheet" type="text/css" href="' . $src . '" ' .
-                ($media ? 'media="' . $media . '" ' : '') . '/>';
-        }
-    }
-
-    /**
-     * Registers Startup Client-side JavaScript - these scripts are loaded at inside the <head> tag
-     *
-     * @param string $src
-     * @param array $options Default: 'name'=>'', 'version'=>'0', 'plaintext'=>false
-     */
-    public function regClientStartupScript($src, $options = ['name' => '', 'version' => '0', 'plaintext' => false])
-    {
-        $this->regClientScript($src, $options, true);
-    }
-
-    /**
-     * Registers Client-side JavaScript these scripts are loaded at the end of the page unless $startup is true
-     *
-     * @param string $src
-     * @param array $options Default: 'name'=>'', 'version'=>'0', 'plaintext'=>false
-     * @param boolean $startup Default: false
-     *
-     * @return void
-     */
-    public function regClientScript(
-        $src,
-        $options = ['name' => '', 'version' => '0', 'plaintext' => false],
-        $startup = false)
-    {
-        if (empty($src)) {
-            return;
-        } // nothing to register
-        if (!is_array($options)) {
-            if (\is_bool($options)) {
-                // backward compatibility with old plaintext parameter
-                $options = ['plaintext' => $options];
-            } elseif (\is_string($options)) {
-                // Also allow script name as 2nd param
-                $options = ['name' => $options];
-            } else {
-                $options = [];
-            }
-        }
-        $name = isset($options['name']) ? strtolower($options['name']) : '';
-        $version = $options['version'] ?? '0';
-        $plaintext = $options['plaintext'] ?? false;
-        $key = !empty($name) ? $name : $src;
-        unset($overwritepos); // probably unnecessary--just making sure
-
-        $useThisVer = true;
-        if (isset($this->loadedjscripts[$key])) { // a matching script was found
-            // if existing script is a startup script, make sure the candidate is also a startup script
-            if ($this->loadedjscripts[$key]['startup']) {
-                $startup = true;
-            }
-
-            if (empty($name)) {
-                $useThisVer = false; // if the match was based on identical source code, no need to replace the old one
-            } else {
-                $useThisVer = version_compare($this->loadedjscripts[$key]['version'], $version, '<');
-            }
-
-            if ($useThisVer) {
-                if ($startup == true && $this->loadedjscripts[$key]['startup'] == false) {
-                    // remove old script from the bottom of the page (new one will be at the top)
-                    unset($this->jscripts[$this->loadedjscripts[$key]['pos']]);
-                } else {
-                    // overwrite the old script (the position may be important for dependent scripts)
-                    $overwritepos = $this->loadedjscripts[$key]['pos'];
-                }
-            } else { // Use the original version
-                if ($startup != true || $this->loadedjscripts[$key]['startup'] != false) {
-                    return; // the script is already in the right place
-                }
-
-                // need to move the exisiting script to the head
-                $version = $this->loadedjscripts[$key][$version];
-                $src = $this->jscripts[$this->loadedjscripts[$key]['pos']];
-                unset($this->jscripts[$this->loadedjscripts[$key]['pos']]);
-            }
-        }
-
-        if ($useThisVer && $plaintext != true && (stripos($src, "<script") === false)) {
-            $src = "\t" . '<script type="text/javascript" src="' . $src . '"></script>';
-        }
-        if ($startup) {
-            $pos = isset($overwritepos) ? $overwritepos : max(array_merge([0], array_keys($this->sjscripts))) + 1;
-            $this->sjscripts[$pos] = $src;
-        } else {
-            $pos = isset($overwritepos) ? $overwritepos : max(array_merge([0], array_keys($this->jscripts))) + 1;
-            $this->jscripts[$pos] = $src;
-        }
-        $this->loadedjscripts[$key]['version'] = $version;
-        $this->loadedjscripts[$key]['startup'] = $startup;
-        $this->loadedjscripts[$key]['pos'] = $pos;
-    }
-
-    /**
-     * Returns all registered JavaScripts
-     *
-     * @return void
-     */
-    public function regClientStartupHTMLBlock($html)
-    {
-        $this->regClientScript($html, true, true);
-    }
-
-    /**
-     * Returns all registered startup scripts
-     *
-     * @return void
-     */
-    public function regClientHTMLBlock($html)
-    {
-        $this->regClientScript($html, true);
-    }
-
-    /**
-     * Remove unwanted html tags and snippet, settings and tags
-     *
-     * @param string $html
-     * @param string $allowed Default: Empty string
-     *
-     * @return string
-     */
-    public function stripTags($html, $allowed = '')
-    {
-        if (empty($html)) {
-            $t = '';
-        } else {
-            $t = strip_tags($html, $allowed);
-            $t = preg_replace('~\[\*(.*?)\*\]~', '', $t); //tv
-            $t = preg_replace('~\[\[(.*?)\]\]~', '', $t); //snippet
-            $t = preg_replace('~\[\!(.*?)\!\]~', '', $t); //snippet
-            $t = preg_replace('~\[\((.*?)\)\]~', '', $t); //settings
-            $t = preg_replace('~\[\+(.*?)\+\]~', '', $t); //placeholders
-            $t = preg_replace('~{{(.*?)}}~', '', $t); //chunks
-        }
-
-        return $t;
-    }
-
-    /**
-     * Add an event listener to a plugin - only for use within the current execution cycle
-     *
-     * @param string $evtName
-     * @param string $pluginName
-     *
-     * @return boolean|int
-     */
-    public function addEventListener($evtName, $pluginName)
-    {
-        if (!$evtName || !$pluginName) {
-            return false;
-        }
-        if (!array_key_exists($evtName, $this->pluginEvent)) {
-            $this->pluginEvent[$evtName] = [];
-        }
-
-        return array_push($this->pluginEvent[$evtName], $pluginName); // return array count
-    }
-
-    /**
-     * Remove event listener - only for use within the current execution cycle
-     *
-     * @param string $evtName
-     *
-     * @return void
-     */
-    public function removeEventListener($evtName)
-    {
-        if (!$evtName) {
-            return;
-        }
-        unset($this->pluginEvent[$evtName]);
-    }
-
-    /**
-     * Remove all event listeners - only for use within the current execution cycle
-     */
-    public function removeAllEventListener()
-    {
-        unset($this->pluginEvent);
-        $this->pluginEvent = [];
-    }
-
-    public function restoreEvent()
-    {
-        $event = $this->event->getPreviousEvent();
-        if ($event) {
-            unset($this->event);
-            $this->event = $event;
-            $this->Event = &$this->event;
-        } else {
-            $this->event->activePlugin = '';
-        }
-
-        return $event;
-    }
-
-    public function storeEvent()
-    {
-        if ($this->event->activePlugin !== '') {
-            $event = new Event;
-            $event->setPreviousEvent($this->event);
-            $this->event = $event;
-            $this->Event = &$this->event;
-        } else {
-            $event = $this->event;
-        }
-
-        return $event;
-    }
-
-    /**
-     * Invoke an event.
-     *
-     * @param string $evtName
-     * @param array $extParams Parameters available to plugins. Each array key will be the PHP variable name, and the array value will be the variable value.
-     *
-     * @return boolean|array
-     */
-    public function invokeEvent($evtName, $extParams = [])
-    {
-        if ($this->isSafemode()) {
-            return;
-        }
-
-        $results = [];
-
-        if (!$evtName) {
-            return false;
-        }
-
-        $out = app('events')->dispatch('evolution.' . $evtName, [$extParams]);
-        if ($out === false) {
-            return false;
-        }
-
-        if (\is_array($out)) {
-            foreach ($out as $result) {
-                if ($result !== null) {
-                    $results[] = $result;
-                }
-            }
-        }
-
-        if (!isset($this->pluginEvent[$evtName])) {
-            return $results ?: false;
-        }
-
-        $this->storeEvent();
-
-        foreach ($this->pluginEvent[$evtName] as $pluginName) { // start for loop
-            if ($this->dumpPlugins) {
-                $eventtime = $this->getMicroTime();
-            }
-            // reset event object
-            $e = &$this->event;
-            $e->_resetEventObject();
-            $e->name = $evtName;
-            $e->activePlugin = $pluginName;
-
-            // get plugin code
-            $_ = $this->getPluginCode($pluginName);
-            $pluginCode = $_['code'];
-            $pluginProperties = $_['props'];
-
-            // load default params/properties
-            $parameter = $this->parseProperties($pluginProperties);
-            if (!is_array($parameter)) {
-                $parameter = [];
-            }
-            if (!empty($extParams)) {
-                $parameter = array_merge($parameter, $extParams);
-            }
-
-            // eval plugin
-            $this->evalPlugin($pluginCode, $parameter);
-
-            if (class_exists('PHxParser')) {
-                $this->setConfig('enable_filter', 0);
-            }
-
-            if ($this->dumpPlugins) {
-                $eventtime = $this->getMicroTime() - $eventtime;
-                $this->pluginsCode .= sprintf(
-                    '<fieldset><legend><b>%s / %s</b> (%2.2f ms)</legend>',
-                    $evtName,
-                    $pluginName,
-                    $eventtime * 1000
-                );
-                foreach ($parameter as $k => $v) {
-                    $this->pluginsCode .= $k . ' => ' . print_r($v, true) . '<br>';
-                }
-                $this->pluginsCode .= '</fieldset><br />';
-                $this->pluginsTime[$evtName . ' / ' . $pluginName] += $eventtime;
-            }
-            if ($this->event->getOutput() != '') {
-                $results[] = $this->event->getOutput();
-            }
-            if ($this->event->_propagate != true) {
-                break;
-            }
-        }
-
-        $this->restoreEvent();
-
-        return $results;
-    }
-
-    /**
-     * Returns plugin-code and properties
-     *
-     * @param string $pluginName
-     *
-     * @return array Associative array consisting of 'code' and 'props'
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     */
-    public function getPluginCode($pluginName)
-    {
-        $plugin = [];
-        if (isset($this->pluginCache[$pluginName])) {
-            $pluginCode = $this->pluginCache[$pluginName];
-            if (isset($this->pluginCache[$pluginName . 'Props'])) {
-                $pluginProperties = $this->pluginCache[$pluginName . 'Props'];
-            } else {
-                $pluginProperties = '';
-            }
-        } else {
-            $plugin = SitePlugin::select('name', 'plugincode', 'properties')
-                ->where('name', $pluginName)->where('disabled', 0)->first();
-
-            if (!is_null($plugin)) {
-                $pluginCode = $this->pluginCache[$plugin->name] = $plugin->plugincode;
-                $pluginProperties = $this->pluginCache[$plugin->name . 'Props'] = $plugin->properties;
-            } else {
-                $pluginCode = $this->pluginCache[$pluginName] = "return false;";
-                $pluginProperties = '';
-            }
-        }
-        $plugin['code'] = $pluginCode;
-        $plugin['props'] = $pluginProperties;
-
-        return $plugin;
-    }
-
-    /**
-     * Parses a resource property string and returns the result as an array
-     *
-     * @param string|array $propertyString
-     * @param string|null $elementName
-     * @param string|null $elementType
-     *
-     * @return array Associative array in the form property name => property value
-     */
-    public function parseProperties($propertyString, $elementName = null, $elementType = null)
-    {
-        $property = [];
-
-        if (\is_scalar($propertyString)) {
-            $propertyString = trim($propertyString);
-            $propertyString = str_replace(['{}', '} {'], ['', ','], $propertyString);
-            if (!empty($propertyString) && $propertyString !== '{}') {
-                $jsonFormat = data_is_json($propertyString, true);
-                // old format
-                if ($jsonFormat === false) {
-                    $props = explode('&', $propertyString);
-                    foreach ($props as $prop) {
-                        if (empty($prop)) {
-                            continue;
-                        }
-
-                        if (strpos($prop, '=') === false) {
-                            $property[trim($prop)] = '';
-                            continue;
-                        }
-
-                        $_ = explode('=', $prop, 2);
-                        $key = trim($_[0]);
-                        $p = explode(';', trim($_[1]));
-                        switch ($p[1]) {
-                            case 'list':
-                            case 'list-multi':
-                            case 'checkbox':
-                            case 'radio':
-                                $value = !isset($p[3]) ? '' : $p[3];
-                                break;
-                            default:
-                                $value = !isset($p[2]) ? '' : $p[2];
-                        }
-                        if (!empty($key)) {
-                            $property[$key] = $value;
-                        }
-                    }
-                    // new json-format
-                } else {
-                    if (!empty($jsonFormat)) {
-                        foreach ($jsonFormat as $key => $row) {
-                            if (!empty($key)) {
-                                if (is_array($row)) {
-                                    if (isset($row[0]['value'])) {
-                                        $value = $row[0]['value'];
-                                    }
-                                } else {
-                                    $value = $row;
-                                }
-                                if (isset($value) && $value !== '') {
-                                    $property[$key] = $value;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } elseif (\is_array($propertyString)) {
-            $property = $propertyString;
-        }
-        if (!empty($elementName) && !empty($elementType)) {
-            $out = $this->invokeEvent('OnParseProperties', [
-                'element' => $elementName,
-                'type' => $elementType,
-                'args' => $property,
-            ]);
-            if (is_array($out)) {
-                $out = array_pop($out);
-            }
-            if (is_array($out)) {
-                $property = $out;
-            }
-        }
-
-        return $property;
-    }
-
-    /**
-     * @deprecated
-     */
-    public function parseDocBlockFromFile($element_dir, $filename, $escapeValues = false)
-    {
-        $data = $this->get('DocBlock')->parseFromFile($element_dir, $filename);
-
-        return $data;
-    }
-
-    /**
-     * @deprecated
-     */
-    public function parseDocBlockFromString($string, $escapeValues = false)
-    {
-        $data = $this->get('DocBlock')->parseFromString($string);
-
-        return $data;
-    }
-
-    /**
-     * @deprecated
-     */
-    public function parseDocBlockLine(
-        $line,
-        $docblock_start_found,
-        $name_found,
-        $description_found,
-        $docblock_end_found)
-    {
-        return $this->get('DocBlock')->parseLine(
-            $line,
-            $docblock_start_found,
-            $name_found,
-            $description_found,
-            $docblock_end_found
-        );
-    }
-
-    /**
-     * @deprecated
-     */
-    public function convertDocBlockIntoList($parsed)
-    {
-        return $this->get('DocBlock')->convertIntoList($parsed);
-    }
-
-    /**
-     * @param string $string
-     *
-     * @return string
-     * @deprecated
-     */
-    public function removeSanitizeSeed($string = '')
-    {
-        return removeSanitizeSeed($string);
+        return implode("\n", $this->jscripts);
     }
 
     /**
      * @param string $content
      *
-     * @return string
+     * @return array|mixed|string|string[]
      */
-    public function cleanUpMODXTags($content = '')
+    public function cleanUpMODXTags(string $content = ''): mixed
     {
         if ($this->minParserPasses < 1) {
             return $content;
@@ -6084,8 +4144,8 @@ class Evo
         $this->setConfig('enable_filter', 1);
         $_ = ['[* *]', '[( )]', '{{ }}', '[[ ]]', '[+ +]'];
         foreach ($_ as $brackets) {
-            [$left, $right] = explode(' ', $brackets);
-            if (strpos($content, $left) !== false) {
+            [$left,] = explode(' ', $brackets);
+            if (str_contains($content, $left)) {
                 if ($left === '[*') {
                     $content = $this->mergeDocumentContent($content);
                 } elseif ($left === '[(') {
@@ -6099,7 +4159,7 @@ class Evo
         }
         foreach ($_ as $brackets) {
             [$left, $right] = explode(' ', $brackets);
-            if (strpos($content, $left) !== false) {
+            if (str_contains($content, $left)) {
                 $matches = $this->getTagsFromContent($content, $left, $right);
                 $content = isset($matches[0]) ? str_replace($matches[0], '', $content) : $content;
             }
@@ -6110,848 +4170,118 @@ class Evo
     }
 
     /**
-     * @param string $str
-     * @param string $allowable_tags
-     *
-     * @return string
-     */
-    // phpcs:ignore
-    public function strip_tags($str = '', $allowable_tags = '')
-    {
-        $str = strip_tags($str, $allowable_tags);
-        modx_sanitize_gpc($str);
-
-        return $str;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function addSnippet($name, $phpCode, $namespace = '#', array $defaultParams = [])
-    {
-        $this->snippetCache[$namespace . $name] = $phpCode;
-        $this->snippetCache[$namespace . $name . 'Props'] = $defaultParams;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function addChunk($name, $text, $namespace = '#')
-    {
-        $this->chunkCache[$namespace . $name] = $text;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function findElements($type, $scanPath, array $ext)
-    {
-        $out = [];
-
-        if (!is_dir($scanPath) || empty($ext)) {
-            return $out;
-        }
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($scanPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
-        foreach ($iterator as $item) {
-            /**
-             * @var \SplFileInfo $item
-             */
-            if ($item->isFile() && $item->isReadable() && \in_array($item->getExtension(), $ext)) {
-                $name = $item->getBasename('.' . $item->getExtension());
-                $path = ltrim(
-                    str_replace(
-                        [rtrim($scanPath, '//'), '/'],
-                        ['', '\\'],
-                        $item->getPath() . '/'
-                    ),
-                    '\\'
-                );
-
-                if (!empty($path)) {
-                    $name = $path . $name;
-                }
-                switch ($type) {
-                    case 'chunk':
-                        $out[$name] = file_get_contents($item->getRealPath());
-                        break;
-                    case 'snippet':
-                        $out[$name] = "return require '" . $item->getRealPath() . "';";
-                        break;
-                    default:
-                        throw new Exception;
-                }
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param string $phpcode
-     * @param string $evalmode
-     * @param string $safe_functions
-     *
-     * @return string|void
-     */
-    public function safeEval($phpcode = '', $evalmode = '', $safe_functions = '')
-    {
-        if ($evalmode == '') {
-            $evalmode = $this->getConfig('allow_eval');
-        }
-        if ($safe_functions == '') {
-            $safe_functions = $this->getConfig('safe_functions_at_eval');
-        }
-
-        modx_sanitize_gpc($phpcode);
-
-        switch ($evalmode) {
-            case 'with_scan':
-                $isSafe = $this->isSafeCode($phpcode, $safe_functions);
-                break;
-            case 'with_scan_at_post':
-                $isSafe = $_POST ? $this->isSafeCode($phpcode, $safe_functions) : true;
-                break;
-            case 'everytime_eval':
-                $isSafe = true;
-                break; // Should debug only
-            case 'dont_eval':
-            default:
-                return $phpcode;
-        }
-
-        if (!$isSafe) {
-            $msg = $phpcode . "\n" . $this->currentSnippet . "\n" . print_r($_SERVER, true);
-            $title = 'Unknown eval was executed (' .
-                ($this->getPhpCompat()->htmlspecialchars(substr(trim($phpcode), 0, 50))) . ')';
-
-            $this->getService('ExceptionHandler')
-                ->messageQuit($title, '', true, '', '', 'Parser', $msg);
-
-            return;
-        }
-
-        ob_start();
-        $return = eval($phpcode);
-        $echo = ob_get_clean();
-
-        if (is_array($return)) {
-            return '[]';
-        }
-
-        $output = $echo . $return;
-        modx_sanitize_gpc($output);
-
-        return $this->getPhpCompat()->htmlspecialchars($output); // Maybe, all html tags are dangerous
-    }
-
-    /**
-     * @param string $phpcode
-     * @param string $safe_functions
-     *
      * @return bool
      */
-    public function isSafeCode($phpcode = '', $safe_functions = '')
+    public function checkPreview(): bool
     {
-        // return true or false
-        if ($safe_functions == '') {
-            return false;
-        }
-
-        $safe = explode(',', $safe_functions);
-
-        $phpcode = rtrim($phpcode, ';') . ';';
-        $tokens = token_get_all('<?php ' . $phpcode);
-        foreach ($tokens as $i => $token) {
-            if (!is_array($token)) {
-                continue;
-            }
-            $tokens[$i]['token_name'] = token_name($token[0]);
-        }
-        foreach ($tokens as $token) {
-            if (!is_array($token)) {
-                continue;
-            }
-            switch ($token['token_name']) {
-                case 'T_STRING':
-                    if (!in_array($token[1], $safe)) {
-                        return false;
-                    }
-                    break;
-                case 'T_VARIABLE':
-                    if ($token[1] === '$GLOBALS') {
-                        return false;
-                    }
-                    break;
-                case 'T_EVAL':
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @param string $str
-     *
-     * @return bool|mixed|string
-     */
-    public function atBindFileContent($str = '')
-    {
-        if (stripos($str, '@FILE') !== 0) {
-            return $str;
-        }
-        if (strpos($str, "\n") !== false) {
-            $str = substr($str, 0, strpos("\n", $str));
-        }
-
-        if ($this->getExtFromFilename($str) === '.php') {
-            return 'Could not retrieve PHP file.';
-        }
-
-        $str = substr($str, 6);
-        $str = trim($str);
-        if (strpos($str, '\\') !== false) {
-            $str = str_replace('\\', '/', $str);
-        }
-        $str = ltrim($str, '/');
-
-        $errorMsg = "Could not retrieve string '" . $str . "'.";
-
-        $search_path =
-            ['assets/tvs/', 'assets/chunks/', 'assets/templates/', $this->getConfig('rb_base_url') . 'files/', ''];
-        foreach ($search_path as $path) {
-            $file_path = MODX_BASE_PATH . $path . $str;
-            if (strpos($file_path, MODX_MANAGER_PATH) === 0) {
-                return $errorMsg;
-            }
-
-            if (is_file($file_path)) {
-                break;
-            }
-
-            $file_path = false;
-        }
-
-        if (!$file_path) {
-            return $errorMsg;
-        }
-
-        $content = (string) file_get_contents($file_path);
-        if ($content === false) {
-            return $errorMsg;
-        }
-
-        return $content;
-    }
-
-    /**
-     * @param $str
-     *
-     * @return bool|string
-     */
-    public function getExtFromFilename($str)
-    {
-        $str = strtolower(trim($str));
-        $pos = strrpos($str, '.');
-        if ($pos === false) {
-            return false;
-        }
-
-        return substr($str, $pos);
-    }
-
-    /**
-     * Get Evolution CMS settings including, but not limited to, the system_settings table
-     */
-    public function getSettings()
-    {
-        /**
-         * Restore original settings
-         * And hack again at the getSettings() method
-         *
-         * @TODO: This is dirty code. Any ideas?
-         */
-        $this->config = $this->saveConfig;
-        $this->saveConfig = [];
-
-        if (empty($this->config)) {
-            $this->recoverySiteCache();
-        }
-
-        /**
-         * @TODO: This is dirty code. Any ideas?
-         */
-        $this->config = $this->configCompatibility();
-
-        $this->loadConfig();
-
-        // now merge user settings into evo-configuration
-        $this->getUserSettings();
-        $this->invokeEvent('OnLoadSettings', ['config' => &$this->config]);
-    }
-
-    /**
-     * Get user settings and merge into Evolution CMS configuration
-     *
-     * @return array
-     */
-    public function getUserSettings(): array
-    {
-        //$this->getDatabase();
-        //if (!$this->getDatabase()->getDriver()->isConnected()) {
-        //   $this->getDatabase()->connect();
-        //}
-        // load user setting if user is logged in
-        $usrSettings = [];
-        if ($id = $this->getLoginUserID()) {
-            $usrType = $this->getLoginUserType();
-            if (isset($usrType) && $usrType === 'manager') {
-                $usrType = 'mgr';
-            }
-
-            if ($usrType === 'mgr' && $this->isBackend()) {
-                // invoke the OnBeforeManagerPageInit event, only if in backend
-                $this->invokeEvent("OnBeforeManagerPageInit");
-            }
-
-            if ($usrType === 'web') {
-                $usrSettings = Models\UserSetting::query()
-                    ->where('user', '=', $id)
-                    ->get()
-                    ->pluck('setting_value', 'setting_name')
-                    ->toArray();
-            } else {
-                $usrSettings = Models\UserSetting::query()
-                    ->where('user', '=', $id)
-                    ->get()
-                    ->pluck('setting_value', 'setting_name')
-                    ->toArray();
-            }
-
-            $which_browser_default = $this->configGlobal['which_browser'] ?? $this->getConfig('which_browser');
-
-            if (($usrSettings['which_browser'] ?? null) === 'default') {
-                $usrSettings['which_browser'] = $which_browser_default;
-            }
-
-            if (isset($usrType)) {
-                $_SESSION[$usrType . 'UsrConfigSet'] = $usrSettings;
-            } // store user settings in session
-        }
-
-        if ($this->isFrontend() && $mgrid = $this->getLoginUserID('mgr')) {
-            $musrSettings = Models\UserSetting::query()
-                ->where('user', '=', $mgrid)
-                ->get()
-                ->pluck('setting_value', 'setting_name')
-                ->toArray();
-
-            $_SESSION['mgrUsrConfigSet'] = $musrSettings; // store user settings in session
-            if (!empty($musrSettings)) {
-                $usrSettings = array_merge($musrSettings, $usrSettings);
-            }
-        }
-
-        // save global values before overwriting/merging array
-        foreach ($usrSettings as $param => $value) {
-            if ($this->getConfig($param) !== null) {
-                $this->configGlobal[$param] = $this->getConfig($param);
-            }
-        }
-
-        $this->config = array_merge($this->config, $usrSettings);
-
-        $this->setConfig(
-            'filemanager_path',
-            str_replace('[(base_path)]', MODX_BASE_PATH, $this->getConfig('filemanager_path'))
-        );
-
-        $this->setConfig(
-            'rb_base_dir',
-            str_replace('[(base_path)]', MODX_BASE_PATH, $this->getConfig('rb_base_dir'))
-        );
-
-        return $usrSettings;
-    }
-
-    /**
-     * @return string
-     */
-    public function getSiteCacheFilePath(): string
-    {
-        return $this->getSiteCachePath('siteCache.idx.php');
-    }
-
-    /**
-     * @param string $path
-     *
-     * @return string
-     */
-    public function getSiteCachePath(string $path = ''): string
-    {
-        return storage_path('framework/cache/data/' . $path);
+        return ($this->isLoggedIn() == true) && isset($_REQUEST['z']) && $_REQUEST['z'] === 'manprev';
     }
 
     /**
      * @return void
      */
-    public function recoverySiteCache(): void
+    public function setConditional(): void
     {
-        $siteCacheDir = $this->getSiteCachePath();
-        $siteCachePath = $this->getSiteCacheFilePath();
-
-        if (is_file($siteCachePath)) {
-            include $siteCachePath;
-        }
-
-        if (!empty($this->config)) {
+        if (!empty($_POST) || (defined('MODX_API_MODE') && MODX_API_MODE) || $this->getLoginUserID('mgr') ||
+            !$this->useConditional || empty($this->recentUpdate)
+        ) {
             return;
         }
+        $last_modified = gmdate('D, d M Y H:i:s T', $this->recentUpdate);
+        $etag = md5($last_modified);
+        $HTTP_IF_MODIFIED_SINCE = $_SERVER['HTTP_IF_MODIFIED_SINCE'] ?? false;
+        $HTTP_IF_NONE_MATCH = $_SERVER['HTTP_IF_NONE_MATCH'] ?? false;
+        header('Pragma: no-cache');
 
-        $cache = new Legacy\Cache();
-        $cache->setCachePath($siteCacheDir);
-        $cache->setReport(false);
-
-        if (IN_INSTALL_MODE === false) {
-            $cache->buildCache();
+        if ($HTTP_IF_MODIFIED_SINCE == $last_modified || Str::contains($HTTP_IF_NONE_MATCH, $etag)) {
+            header('HTTP/1.1 304 Not Modified');
+            header('Content-Length: 0');
+            exit;
         }
 
-        clearstatcache();
-        if (Cache::has($siteCachePath)) {
-            eval(Cache::get($siteCachePath));
-        }
-
-        if (!empty($this->config)) {
-            return;
-        }
-
-        if (IN_INSTALL_MODE === false) {
-            $this->config = Models\SystemSetting::all()
-                ->pluck('setting_value', 'setting_name')
-                ->toArray();
-        }
-
-        if ($this->getConfig('enable_filter') === null) {
-            return;
-        }
-
-        if (IN_INSTALL_MODE === false) {
-            if (Models\SitePlugin::activePhx()->count() === 0) {
-                $this->setConfig('enable_filter', '0');
-            }
-        }
-    }
-
-    /***************************************************************************************/
-    /* End of API functions                                       */
-    /***************************************************************************************/
-
-    /**
-     * PHP error handler set by http://www.php.net/manual/en/function.set-error-handler.php
-     *
-     * Checks the PHP error and calls messageQuit() unless:
-     *  - error_reporting() returns 0, or
-     *  - the PHP error level is 0, or
-     *  - the PHP error level is 8 (E_NOTICE) and stopOnNotice is false
-     *
-     * @param int $nr The PHP error level as per http://www.php.net/manual/en/errorfunc.constants.php
-     * @param string $text Error message
-     * @param string $file File where the error was detected
-     * @param string $line Line number within $file
-     *
-     * @return boolean
-     * @deprecated
-     */
-    public function phpError($nr, $text, $file, $line)
-    {
-        $this->getService('ExceptionHandler')->phpError($nr, $text, $file, $line);
+        header('Last-Modified: ' . $last_modified);
+        header("ETag: '" . $etag . "'");
     }
 
     /**
-     * @param string $msg
-     * @param string $query
-     * @param bool $is_error
-     * @param string $nr
-     * @param string $file
-     * @param string $source
-     * @param string $text
-     * @param string $line
-     * @param string $output
-     *
-     * @return bool
-     * @deprecated
-     */
-    public function messageQuit(
-        $msg = 'unspecified error',
-        $query = '',
-        $is_error = true,
-        $nr = '',
-        $file = '',
-        $source = '',
-        $text = '',
-        $line = '',
-        $output = '')
-    {
-        return $this->getService('ExceptionHandler')->messageQuit(
-            $msg,
-            $query,
-            $is_error,
-            $nr,
-            $file,
-            $source,
-            $text,
-            $line,
-            $output
-        );
-    }
-
-    /**
-     * @param $backtrace
-     *
-     * @return string
-     * @deprecated
-     */
-    // phpcs:ignore
-    public function get_backtrace($backtrace)
-    {
-        return $this->getService('ExceptionHandler')->getBacktrace($backtrace);
-    }
-
-    /**
-     * @return string
-     */
-    public function getRegisteredClientScripts()
-    {
-        return implode("\n", $this->jscripts);
-    }
-
-    /**
-     * @return string
-     */
-    public function getRegisteredClientStartupScripts()
-    {
-        return implode("\n", $this->sjscripts);
-    }
-
-    /**
-     * Format alias to be URL-safe. Strip invalid characters.
-     *
-     * @param string $alias Alias to be formatted
-     *
-     * @return string Safe alias
-     */
-    public function stripAlias($alias)
-    {
-        // let add-ons overwrite the default behavior
-        $results = $this->invokeEvent('OnStripAlias', ['alias' => $alias]);
-        if (!empty($results)) {
-            // if multiple plugins are registered, only the last one is used
-            return end($results);
-        }
-
-        // default behavior: strip invalid characters and replace spaces with dashes.
-        $alias = strip_tags($alias); // strip HTML
-        $alias = preg_replace('/[^\.A-Za-z0-9 _-]/', '', $alias); // strip non-alphanumeric characters
-        $alias = preg_replace('/\s+/', '-', $alias); // convert white-space to dash
-        $alias = preg_replace('/-+/', '-', $alias); // convert multiple dashes to one
-        $alias = trim($alias, '-'); // trim excess
-
-        return $alias;
-    }
-
-    /**
-     * @param $size
-     *
-     * @return string
-     * @deprecated
-     */
-    public function nicesize($size)
-    {
-        return nicesize($size);
-    }
-
-    /**
-     * @deprecated use UrlProcessor::getHiddenIdFromAlias()
-     */
-    public function getHiddenIdFromAlias($parentid, $alias)
-    {
-        return app('evo.url')->getHiddenIdFromAlias($parentid, $alias);
-    }
-
-    /**
-     * @deprecated use UrlProcessor::getIdFromAlias()
-     */
-    public function getIdFromAlias($alias)
-    {
-        return app('evo.url')->getIdFromAlias($alias);
-    }
-
-    /**
-     * @param string $str
-     *
-     * @return bool|mixed|string
-     */
-    public function atBindInclude($str = '')
-    {
-        if (strpos($str, '@INCLUDE') !== 0) {
-            return $str;
-        }
-        if (strpos($str, "\n") !== false) {
-            $str = substr($str, 0, strpos("\n", $str));
-        }
-
-        $str = substr($str, 9);
-        $str = trim($str);
-        $str = str_replace('\\', '/', $str);
-        $str = ltrim($str, '/');
-
-        $tpl_dir = 'assets/templates/';
-
-        if (strpos($str, MODX_MANAGER_PATH) === 0) {
-            return false;
-        }
-
-        if (is_file(MODX_BASE_PATH . $str)) {
-            $file_path = MODX_BASE_PATH . $str;
-        } elseif (is_file(MODX_BASE_PATH . "{$tpl_dir}{$str}")) {
-            $file_path = MODX_BASE_PATH . $tpl_dir . $str;
-        } else {
-            return false;
-        }
-
-        if (!$file_path || !is_file($file_path)) {
-            return false;
-        }
-
-        ob_start();
-        $modx = &$this;
-        $result = include $file_path;
-        if ($result === 1) {
-            $result = '';
-        }
-        $content = ob_get_clean();
-        if (!$content && $result) {
-            $content = $result;
-        }
-
-        return $content;
-    }
-
-    // php compat
-
-    /**
-     * @param $str
-     * @param int $flags
-     * @param string $encode
-     *
-     * @return mixed
-     */
-    public function htmlspecialchars($str, $flags = ENT_COMPAT, $encode = '')
-    {
-        return $this->getPhpCompat()->htmlspecialchars($str, $flags, $encode);
-    }
-
-    /**
-     * @param $string
-     * @param bool $returnData
-     *
-     * @return bool|mixed
-     * @deprecated
-     */
-    public function isJson($string, $returnData = false)
-    {
-        return data_is_json($string, $returnData);
-    }
-
-    /**
-     * @param $key
+     * @param $tstart
      *
      * @return array
      */
-    public function splitKeyAndFilter($key)
+    public function getTimerStats($tstart): array
     {
-        if ($this->getConfig('enable_filter') && strpos($key, ':') !== false && stripos($key, '@FILE') !== 0) {
-            [$key, $modifiers] = explode(':', $key, 2);
-        } else {
-            $modifiers = false;
-        }
+        $stats = [];
 
-        $key = trim($key);
-        if ($modifiers !== false) {
-            $modifiers = trim($modifiers);
-        }
+        $stats['totalTime'] = ($this->getMicroTime() - $tstart);
+        $stats['queryTime'] = $this->queryTime;
+        $stats['phpTime'] = $stats['totalTime'] - $stats['queryTime'];
 
-        return [$key, $modifiers];
+        $stats['queryTime'] = sprintf('%2.4f s', $stats['queryTime']);
+        $stats['totalTime'] = sprintf('%2.4f s', $stats['totalTime']);
+        $stats['phpTime'] = sprintf('%2.4f s', $stats['phpTime']);
+        $stats['source'] = $this->documentGenerated == 1 ? 'database' : 'cache';
+        $stats['queries'] = $this->executedQueries ?? 0;
+        $stats['phpMemory'] = (memory_get_peak_usage(true) / 1024 / 1024) . ' mb';
+
+        return $stats;
     }
 
     /**
-     * @param string $value
-     * @param bool $modifiers
-     * @param string $key
+     * @param string $contents
      *
      * @return string
      */
-    public function applyFilter($value = '', $modifiers = false, $key = '')
+    public function RecoveryEscapedTags(string $contents): string
     {
-        if ($modifiers === false || $modifiers === 'raw') {
-            return $value;
-        }
-        if ($modifiers !== false) {
-            $modifiers = trim((string) $modifiers);
-        }
+        [$sTags, $rTags] = $this->getTagsForEscape();
 
-        return $this->getModifiers()->phxFilter($key, $value, $modifiers);
-    }
-
-    // End of class.
-
-    /**
-     * @param string $title
-     * @param string $msg
-     * @param int $type
-     *
-     * @throws Exception
-     * @throws InvalidFieldException
-     * @throws TableNotDefinedException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\Exception
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\GetDataException
-     * @throws \AgelxNash\Modx\Evo\Database\Exceptions\TooManyLoopsException
-     */
-    public function addLog($title = 'no title', $msg = '', $type = 1)
-    {
-        if ($title === '') {
-            $title = 'no title';
-        }
-        if (is_array($msg)) {
-            $msg = '<pre>' . print_r($msg, true) . '</pre>';
-        } elseif ($msg === '') {
-            $msg = $_SERVER['REQUEST_URI'];
-        }
-        $this->logEvent(0, $type, $msg, $title);
+        return str_replace($rTags, $sTags, $contents);
     }
 
     /**
-     * @param array $data
+     * @return void
      */
-    public function addDataToView($data = [])
+    public function sendStrictURI(): void
     {
-        $this->dataForView = array_merge($this->dataForView, $data);
-    }
+        $url = app('evo.url')->strictURI($this->q, $this->documentIdentifier);
 
-    public function getDataForView()
-    {
-        return $this->dataForView;
+        if ($url !== null) {
+            $this->sendRedirect($url, 0, 'REDIRECT_HEADER', 'HTTP/1.0 301 Moved Permanently');
+        }
     }
 
     /**
-     * @param string $name
-     * @param string $file
-     * @param string $icon
-     * @param array $params
+     * @return void
      */
-    public function registerModule($name, $file, $icon = 'fa fa-cube', $params = [])
+    public function postProcess(): void
     {
-        if (!$this->isBackend() || app()->runningInConsole()) {
-            return false;
+        // if the current document was generated, cache it!
+        $cacheable = ($this->getConfig('enable_cache') && $this->documentObject['cacheable']) ? 1 : 0;
+        if ($cacheable && $this->documentGenerated && $this->documentObject['type'] == 'document' &&
+            $this->documentObject['published']
+        ) {
+            // invoke OnBeforeSaveWebPageCache event
+            $this->invokeEvent("OnBeforeSaveWebPageCache");
+
+            if (!empty($this->cacheKey)) {
+                // get and store document groups inside document object. Document groups will be used to check security on cache pages
+                $docGroups =
+                    DocumentGroup::query()->where('document', $this->documentIdentifier)->pluck('document_group')
+                        ->toArray();
+                // Attach Document Groups and Scripts
+                if (is_array($docGroups)) {
+                    $this->documentObject['__MODxDocGroups__'] = implode(",", $docGroups);
+                }
+
+                $docObjSerial = serialize($this->documentObject);
+                $cacheContent = $docObjSerial . "<!--__MODxCacheSpliter__-->" . $this->documentContent;
+                $page_cache_path = $this->getHashFile($this->cacheKey);
+                Cache::forever($page_cache_path, "<?php die('Unauthorized access.'); ?>$cacheContent");
+            }
         }
 
-        $module_id = md5($name);
-
-        $this->modulesFromFile[$module_id] = [
-            'id' => $module_id,
-            'name' => $name,
-            'file' => $file,
-            'icon' => $icon,
-            'properties' => $params,
-        ];
-
-        return $module_id;
+        // Useful for example to external page counters/stats packages
+        $this->invokeEvent('OnWebPageComplete');
+        // end post-processing
     }
-
-    /**
-     * @param string $name
-     * @param string $file
-     * @param string $icon
-     * @param string $hidden
-     */
-    public function registerRoutingModule($name, $file, $icon = 'fa fa-cube', $hidden = false)
-    {
-        $params = [
-            'routes' => $file,
-            'hidden' => $hidden,
-        ];
-
-        if ($module_id = $this->registerModule($name, $file, $icon, $params)) {
-            Route::middleware('mgr')
-                ->prefix('modules/' . $module_id)
-                ->group($file);
-
-            return $module_id;
-        }
-
-        return false;
-    }
-
-    public function maintenanceMode()
-    {
-        // TODO: Implement maintenanceMode() method.
-    }
-
-    public function terminating($callback)
-    {
-        // TODO: Implement terminating() method.
-    }
-
-    /**
-     * @return Legacy\Database
-     */
-    public function getDatabase(): Legacy\Database
-    {
-        return app('evo.db');
-    }
-
-    public function setEvolutionProperty(?string $abstract, string $property)
-    {
-        $this->evolutionProperty[$property] = $abstract;
-    }
-
-    /**
-     * @param string $property
-     * @return bool
-     */
-    public function isEvolutionProperty(string $property)
-    {
-        return \in_array($property, $this->evolutionProperty, true);
-    }
-
-    /**
-     * @param string $property
-     * @return bool
-     */
-    public function hasEvolutionProperty(string $property)
-    {
-        return isset($this->evolutionProperty[$property]);
-    }
-
-    /**
-     * @param string $property
-     * @return mixed|null
-     */
-    public function getEvolutionProperty(string $property)
-    {
-        $abstract = Arr::get($this->evolutionProperty, $property, null);
-        return $abstract === null ? null : $this->$abstract();
-    }
-
-    /**
-     * @return Legacy\DeprecatedCore
-     */
-    public function getDeprecatedCore(): Legacy\DeprecatedCore
-    {
-        return app('evo.deprecated');
-    }
-
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Providers;
 
+use DocumentParser;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -17,8 +18,8 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton('evo', fn() => new \DocumentParser());
-        $this->app->alias('evo', \DocumentParser::class);
+        $this->app->singleton('evo', fn() => new DocumentParser());
+        $this->app->alias('evo', DocumentParser::class);
         $this->registerLegacy();
     }
 

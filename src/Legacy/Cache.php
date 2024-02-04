@@ -448,6 +448,10 @@ class Cache
         // invoke OnBeforeCacheUpdate event
         $modx->invokeEvent('OnBeforeCacheUpdate');
 
+        if (!is_dir(dirname($filename))) {
+            mkdir(dirname($filename), 0755, true);
+        }
+
 //        \Illuminate\Support\Facades\Cache::forever($filename, $content);
         if (@file_put_contents($filename, $content) === false) {
             exit("Cannot write $filename! Make sure file or its directory is writable!");
