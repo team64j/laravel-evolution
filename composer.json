@@ -22,7 +22,8 @@
       "legacy/SystemEvent.php"
     ],
     "psr-4": {
-      "Team64j\\LaravelEvolution\\": "src"
+      "Team64j\\LaravelEvolution\\": "src",
+      "EvolutionCMS\\": "evo"
     }
   },
   "extra": {

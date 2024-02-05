@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
+use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -40,6 +41,7 @@ class Evo
     public array $chunkCache = [];
     public array $snippetCache = [];
     public array $pluginCache = [];
+    public array $pluginEvent = [];
     protected string $documentMethod;
     protected mixed $time;
     protected string $q;
@@ -96,6 +98,11 @@ class Evo
      * @deprecated
      */
     public Event $Event;
+
+    /**
+     * @var array
+     */
+    protected array $documentMap = [];
 
     public function __construct()
     {
@@ -328,7 +335,7 @@ class Evo
             $this->documentIdentifier = $this->getConfig('site_unavailable_page');
         }
 
-        if ($this->documentMethod !== 'alias') {
+        if ($this->documentMethod != 'alias') {
             app('evo.tpl')->setTemplatePath('views/');
 
             //$this->_fixURI();
@@ -342,7 +349,7 @@ class Evo
             }
 
             if ($this->getConfig('seostrict')) {
-                $this->sendStrictURI();
+                return $this->sendStrictURI();
             }
 
             return $this->prepareResponse();
@@ -350,9 +357,9 @@ class Evo
 
         $this->documentIdentifier = $this->cleanDocumentIdentifier($this->documentIdentifier);
 
-        if ((bool) $this->getConfig('friendly_alias_urls') == 1) {
+        if ($this->getConfig('friendly_alias_urls')) {
             // Check use_alias_path and check if $this->virtualDir is set to anything, then parse the path
-            if ((bool) $this->getConfig('use_alias_path') == 1) {
+            if ($this->getConfig('use_alias_path')) {
                 // use_alias_path = Use Friendly URL alias path = YES
                 $virtualDir = app('evo.url')->virtualDir;
                 $alias = ($virtualDir != '' ? $virtualDir . '/' : '') . $this->documentIdentifier;
@@ -363,7 +370,7 @@ class Evo
                     $parent = $virtualDir ? app('evo.url')->getIdFromAlias($virtualDir) : 0;
 
                     if ($parent === null) {
-                        $this->sendErrorPage();
+                        return $this->sendErrorPage();
                     }
 
                     $doc = SiteContent::query()
@@ -1300,11 +1307,11 @@ class Evo
             }
 
             if ($this->documentObject['deleted'] == 1) {
-                $this->sendErrorPage();
+                return $this->sendErrorPage();
             } elseif ($this->documentObject['published'] == 0) { // validation routines
-                $this->_sendErrorForUnpubPage();
+                return $this->_sendErrorForUnpubPage();
             } elseif ($this->documentObject['type'] === 'reference') {
-                $this->_sendRedirectForRefPage($this->documentObject['content']);
+                return (string) $this->_sendRedirectForRefPage($this->documentObject['content']);
             }
 
             $template = app('evo.tpl')->getBladeDocumentContent();
@@ -1676,15 +1683,13 @@ class Evo
     }
 
     /**
-     * @return void
+     * @return string|void
      */
-    public function _sendErrorForUnpubPage(): void
+    public function _sendErrorForUnpubPage()
     {
         // Can't view unpublished pages !$this->checkPreview()
         if (!$this->hasPermission('view_unpublished', 'mgr') && !$this->hasPermission('view_unpublished')) {
-            $this->sendErrorPage();
-
-            return;
+            return $this->sendErrorPage();
         }
 
         $udperms = new Legacy\Permissions();
@@ -1693,7 +1698,7 @@ class Evo
         $udperms->role = Session::get('mgrRole');
         // Doesn't have access to this document
         if (!$udperms->checkPermissions()) {
-            $this->sendErrorPage();
+            return $this->sendErrorPage();
         }
     }
 
@@ -2766,6 +2771,91 @@ class Evo
     }
 
     /**
+     * @param $id
+     * @param int $depth
+     * @param array $children
+     *
+     * @return mixed
+     */
+    public function getChildIds($id, int $depth = 10, array $children = []): mixed
+    {
+        static $cached = [];
+
+        $cacheKey = md5(print_r(func_get_args(), true));
+        if (isset($cached[$cacheKey])) {
+            return $cached[$cacheKey];
+        }
+        $cached[$cacheKey] = [];
+
+        if ($this->getConfig('alias_listing') != 1) {
+            $id = is_array($id) ? $id : [$id];
+            $res = SiteContent::withTrashed()
+                ->select(['id', 'alias', 'isfolder', 'parent'])
+                ->whereIn('parent', $id)
+                ->get()
+                ->toArray();
+
+            $idx = [];
+            foreach ($res as $row) {
+                $pAlias = '';
+                if (isset(app('evo.url')->aliasListing[$row['parent']])) {
+                    if (app('evo.url')->aliasListing[$row['parent']]['path']) {
+                        $pAlias .= app('evo.url')->aliasListing[$row['parent']]['path'] . '/';
+                    }
+                    if (app('evo.url')->aliasListing[$row['parent']]['alias']) {
+                        $pAlias .= app('evo.url')->aliasListing[$row['parent']]['alias'] . '/';
+                    }
+                };
+                $children[$pAlias . $row['alias']] = $row['id'];
+                if ($row['isfolder']) {
+                    $idx[] = $row['id'];
+                }
+            }
+            $depth--;
+            if ($idx && $depth) {
+                $children = $this->getChildIds($idx, $depth, $children);
+            }
+            $cached[$cacheKey] = $children;
+
+            return $children;
+        }
+
+        // Initialise a static array to index parents->children
+        static $documentMap_cache = [];
+        if (!$documentMap_cache) {
+            foreach ($this->documentMap as $document) {
+                foreach ($document as $p => $c) {
+                    $documentMap_cache[$p][] = $c;
+                }
+            }
+        }
+
+        // Get all the children for this parent node
+        if (isset($documentMap_cache[$id])) {
+            $depth--;
+            foreach ($documentMap_cache[$id] as $childId) {
+                if (strlen(app('evo.url')->aliasListing[$childId]['path'])) {
+                    $pkey = "{UrlProcessor::getFacadeRoot()->aliasListing[" . $childId . "]['path']}/" . app('evo.url')->aliasListing[$childId]['alias'];
+                } else {
+                    $pkey = app('evo.url')->aliasListing[$childId]['alias'];
+                }
+                if ($pkey == '') {
+                    $pkey = (string) $childId;
+                }
+                $children[$pkey] = $childId;
+
+                if ($depth && isset($documentMap_cache[$childId])) {
+                    $children += $this->getChildIds($childId, $depth);
+                }
+            }
+        }
+
+        $cached[$cacheKey] = $children;
+
+        return $children;
+    }
+
+    /**
      * @param int $id
      * @param string $sort
      * @param string $dir
@@ -3724,6 +3814,7 @@ class Evo
                 return $return;
             }
         }
+
         if (array_key_exists($snippetName, $this->snippetCache)) {
             $snippet = $this->snippetCache[$snippetName];
             $properties =
@@ -3737,6 +3828,7 @@ class Evo
             }
             $properties = $this->snippetCache[$snippetName . "Props"] = $snippetObject['properties'];
         }
+
         // load default params/properties
         $parameters = $this->parseProperties($properties, $snippetName, 'snippet');
         $parameters = array_merge($parameters, $params);
@@ -4374,5 +4466,81 @@ class Evo
         // Useful for example to external page counters/stats packages
         $this->invokeEvent('OnWebPageComplete');
         // end post-processing
+    }
+
+    /**
+     * @param $name
+     * @param $phpCode
+     * @param $namespace
+     * @param array $defaultParams
+     *
+     * @return void
+     */
+    public function addSnippet($name, $phpCode, $namespace = '#', array $defaultParams = [])
+    {
+        $this->snippetCache[$namespace . $name] = $phpCode;
+        $this->snippetCache[$namespace . $name . 'Props'] = $defaultParams;
+    }
+
+    /**
+     * @param $name
+     * @param $text
+     * @param $namespace
+     *
+     * @return void
+     */
+    public function addChunk($name, $text, $namespace = '#')
+    {
+        $this->chunkCache[$namespace . $name] = $text;
+    }
+
+    /**
+     * @param $type
+     * @param $scanPath
+     * @param array $ext
+     *
+     * @return array
+     * @throws Exception
+     */
+    public function findElements($type, $scanPath, array $ext)
+    {
+        $out = [];
+
+        if (!is_dir($scanPath) || empty($ext)) {
+            return $out;
+        }
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($scanPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+        foreach ($iterator as $item) {
+            /**
+             * @var \SplFileInfo $item
+             */
+            if ($item->isFile() && $item->isReadable() && in_array($item->getExtension(), $ext)) {
+                $name = $item->getBasename('.' . $item->getExtension());
+                $path = ltrim(str_replace(
+                    array(rtrim($scanPath, '//'), '/'),
+                    array('', '\\'),
+                    $item->getPath() . '/'
+                ), '\\');
+
+                if (!empty($path)) {
+                    $name = $path . $name;
+                }
+                switch ($type) {
+                    case 'chunk':
+                        $out[$name] = file_get_contents($item->getRealPath());
+                        break;
+                    case 'snippet':
+                        $out[$name] = "return require '" . $item->getRealPath() . "';";
+                        break;
+                    default:
+                        throw new Exception;
+                }
+            }
+        }
+
+        return $out;
     }
 }
