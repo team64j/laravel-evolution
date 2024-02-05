@@ -43,7 +43,7 @@ class Evo
     protected string $documentMethod;
     protected mixed $time;
     protected string $q;
-    protected string $systemCacheKey;
+    protected string $systemCacheKey = '';
     protected int $documentGenerated;
     protected array $sjscripts = [];
     protected array $jscripts = [];
@@ -197,19 +197,25 @@ class Evo
 
     /**
      * @return DeprecatedCore
+     * @deprecated
      */
     public function getDeprecatedCore(): DeprecatedCore
     {
         return app('evo.deprecated');
     }
 
-    public function getMail()
+    /**
+     * @return mixed
+     * @deprecated
+     */
+    public function getMail(): mixed
     {
         return $this->getService('MODxMailer');
     }
 
     /**
      * @return mixed
+     * @deprecated
      */
     public function getModifiers(): mixed
     {
@@ -218,10 +224,46 @@ class Evo
 
     /**
      * @return mixed
+     * @deprecated
      */
     public function getPhpCompat(): mixed
     {
         return $this->getService('PHPCOMPAT');
+    }
+
+    /**
+     * @param $tbl
+     *
+     * @return string
+     * @deprecated
+     */
+    public function getFullTableName($tbl): string
+    {
+        return $this->getDatabase()->getFullTableName($tbl);
+    }
+
+    /**
+     * @deprecated use UrlProcessor::makeUrl()
+     */
+    public function makeUrl($id, $alias = '', $args = '', $scheme = '')
+    {
+        return app('evo.url')->makeUrl((int) $id, $alias, $args, $scheme);
+    }
+
+    /**
+     * @param array $data
+     */
+    public function addDataToView(array $data = []): void
+    {
+        $this->dataForView = array_merge($this->dataForView, $data);
+    }
+
+    /**
+     * @return array
+     */
+    public function getDataForView(): array
+    {
+        return $this->dataForView;
     }
 
     /**
@@ -358,7 +400,7 @@ class Evo
                         }
 
                         if (is_null($doc) || !$found) {
-                            $this->sendErrorPage();
+                            return $this->sendErrorPage();
                         }
                     }
 
@@ -1189,9 +1231,9 @@ class Evo
     /**
      * @param bool $noEvent
      *
-     * @return void
+     * @return string
      */
-    public function sendErrorPage(bool $noEvent = false): void
+    public function sendErrorPage(bool $noEvent = false): string
     {
         $this->setSystemCacheKey('notfound');
         if (!$noEvent) {
@@ -1200,7 +1242,7 @@ class Evo
         }
         $url = app('evo.url')->getNotFoundPageId();
 
-        $this->sendForward($url, 'HTTP/1.0 404 Not Found');
+        return $this->sendForward($url, 'HTTP/1.0 404 Not Found');
     }
 
     /**
@@ -2671,6 +2713,36 @@ class Evo
         }
 
         return $value;
+    }
+
+    /**
+     * @param int|string $id
+     * @param int $height
+     *
+     * @return array
+     */
+    public function getParentIds(int|string $id, int $height = 10): array
+    {
+        $parents = [];
+        while ($id && $height--) {
+            $aliasListing = get_by_key(app('evo.url')->aliasListing, $id, [], 'is_array');
+            $tmp = get_by_key($aliasListing, 'parent');
+
+            $current_id = $id;
+
+            if ($this->getConfig('alias_listing') != 1) {
+                $id = $tmp ?? (int) SiteContent::query()->findOrNew($id)->parent;
+            } else {
+                $id = $tmp;
+            }
+
+            if ((int) $id === 0) {
+                break;
+            }
+            $parents[$current_id] = (int) $id;
+        }
+
+        return $parents;
     }
 
     /**

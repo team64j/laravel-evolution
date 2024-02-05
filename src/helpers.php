@@ -70,7 +70,7 @@ if (!function_exists('rename_key_arr')) {
      * @param string $prefix
      * @param string $suffix
      * @param string $addPS separator prefix/suffix and array keys
-     * @param string $sep flatten an multidimensional array and combine keys with separator
+     * @param string $sep flatten a multidimensional array and combine keys with separator
      *
      * @return array
      */
@@ -97,6 +97,59 @@ if (!function_exists('rename_key_arr')) {
                     break;
             }
             $out[$key . $InsertSuffix] = $val;
+        }
+
+        return $out;
+    }
+}
+
+if (!function_exists('get_by_key')) {
+    /**
+     * @param mixed $data
+     * @param int|string $key
+     * @param mixed|null $default
+     * @param Closure|string|null $validate
+     *
+     * @return mixed
+     */
+    function get_by_key(mixed $data, int|string $key, mixed $default = null, Closure|string $validate = null): mixed
+    {
+        $out = $default;
+        $found = false;
+        if (is_array($data) && (is_int($key) || is_string($key)) && $key !== '') {
+            if (array_key_exists($key, $data)) {
+                $out = $data[$key];
+                $found = true;
+            } else {
+                $offset = 0;
+                do {
+                    if (($pos = mb_strpos($key, '.', $offset)) > 0) {
+                        $subData = get_by_key($data, mb_substr($key, 0, $pos));
+                        $offset = $pos + 1;
+                        $subKey = mb_substr($key, $offset);
+                        if (is_array($subData) && array_key_exists($subKey, $subData)) {
+                            $out = $subData[$subKey];
+                            $found = true;
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } while (true);
+
+                if ($found === false && ($pos = mb_strpos($key, '.', $offset)) > 0) {
+                    $subData = get_by_key($data, mb_substr($key, 0, $pos));
+                    $out = get_by_key($subData, mb_substr($key, $pos + 1), $default, $validate);
+                }
+            }
+        }
+
+        if ($found && $validate && is_callable($validate)) {
+            if ($validate($out) === true) {
+                return $out;
+            }
+
+            return $default;
         }
 
         return $out;
