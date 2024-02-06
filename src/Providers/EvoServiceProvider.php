@@ -36,7 +36,7 @@ class EvoServiceProvider extends ServiceProvider
      */
     protected function defineConstants(): void
     {
-        require __DIR__ . '/../helpers.php';
+        //require __DIR__ . '/../helpers.php';
         require __DIR__ . '/../define.inc.php';
     }
 

@@ -20,7 +20,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function loadSnippetsFrom($path, string $namespace = ''): void
     {
-        $found = evo()->findElements('snippet', $path, array('php'));
+        $found = app('evo')->findElements('snippet', $path, array('php'));
         foreach ($found as $name => $code) {
             $this->addSnippet($name, $code, $namespace);
         }
@@ -36,7 +36,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function loadChunksFrom($path, string $namespace = ''): void
     {
-        $found = evo()->findElements('chunk', $path, array('tpl', 'html'));
+        $found = app('evo')->findElements('chunk', $path, array('tpl', 'html'));
         foreach ($found as $name => $code) {
             $this->addChunk($name, $code, $namespace);
         }
@@ -65,7 +65,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function addSnippet($name, $code, string $namespace = ''): void
     {
-        evo()->addSnippet($name, $code, !empty($namespace) ? $namespace . '#' : '');
+        app('evo')->addSnippet($name, $code, !empty($namespace) ? $namespace . '#' : '');
     }
 
     /**
@@ -77,6 +77,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function addChunk($name, $code, string $namespace = ''): void
     {
-        evo()->addChunk($name, $code, !empty($namespace) ? $namespace . '#' : '');
+        app('evo')->addChunk($name, $code, !empty($namespace) ? $namespace . '#' : '');
     }
 }

@@ -17,6 +17,7 @@
   },
   "autoload": {
     "files": [
+      "src/helpers.php",
       "legacy/DocumentParser.php",
       "legacy/DLTemplate.php",
       "legacy/SystemEvent.php"
