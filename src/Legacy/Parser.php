@@ -3,13 +3,13 @@
 namespace Team64j\LaravelEvolution\Legacy;
 
 use DocumentParser;
+use EvolutionCMS\Models\SiteTemplate;
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\View\Factory;
 use Illuminate\View\FileViewFinder;
 use Team64j\LaravelEvolution\Models;
-use Team64j\LaravelEvolution\Models\SiteTemplate;
 
 /**
  */
@@ -328,7 +328,7 @@ class Parser
             $tpl = $this->core->chunkCache[$name];
         } else {
             /** @var \Illuminate\Database\Eloquent\Collection $chunk */
-            $chunk = Models\SiteHtmlsnippet::query()
+            $chunk = \EvolutionCMS\Models\SiteHtmlsnippet::query()
                 ->where('name', $name)
                 ->where('disabled', 0)
                 ->get();
@@ -406,7 +406,7 @@ class Parser
         $id = (int) $id;
 
         if ($id > 0) {
-            $tpl = Models\SiteTemplate::query()->find($id)->content;
+            $tpl = \EvolutionCMS\Models\SiteTemplate::query()->find($id)->content;
         }
 
         if ($tpl === null) {

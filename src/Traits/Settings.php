@@ -2,9 +2,9 @@
 
 namespace Team64j\LaravelEvolution\Traits;
 
+use EvolutionCMS\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Team64j\LaravelEvolution\Models\SystemSetting;
 
 trait Settings
 {

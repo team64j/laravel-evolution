@@ -23,13 +23,14 @@
     ],
     "psr-4": {
       "Team64j\\LaravelEvolution\\": "src",
-      "EvolutionCMS\\": "evo"
+      "EvolutionCMS\\": "evo/src"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Team64j\\LaravelEvolution\\Providers\\EvoServiceProvider"
+        "Team64j\\LaravelEvolution\\Providers\\EvoServiceProvider",
+        "EvolutionCMS\\ServiceProvider"
       ]
     }
   }

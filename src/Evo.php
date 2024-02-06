@@ -4,7 +4,18 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
+use EvolutionCMS\DocumentManager\Facades\DocumentManager;
+use EvolutionCMS\Models\DocumentGroup;
+use EvolutionCMS\Models\DocumentgroupName;
+use EvolutionCMS\Models\EventLog;
+use EvolutionCMS\Models\SiteContent;
+use EvolutionCMS\Models\SitePlugin;
+use EvolutionCMS\Models\SiteSnippet;
+use EvolutionCMS\Models\SiteTemplate;
+use EvolutionCMS\Models\SiteTmplvar;
+use EvolutionCMS\Models\User;
 use Exception;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -15,15 +26,6 @@ use Illuminate\Support\Str;
 use stdClass;
 use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
 use Team64j\LaravelEvolution\Legacy\Event;
-use Team64j\LaravelEvolution\Models\DocumentGroup;
-use Team64j\LaravelEvolution\Models\DocumentgroupName;
-use Team64j\LaravelEvolution\Models\EventLog;
-use Team64j\LaravelEvolution\Models\SiteContent;
-use Team64j\LaravelEvolution\Models\SitePlugin;
-use Team64j\LaravelEvolution\Models\SiteSnippet;
-use Team64j\LaravelEvolution\Models\SiteTemplate;
-use Team64j\LaravelEvolution\Models\SiteTmplvar;
-use Team64j\LaravelEvolution\Models\User;
 
 class Evo
 {
@@ -1337,7 +1339,12 @@ class Evo
                     app('evo.tpl')->getBlade()->share($data);
                 }
 
-                $tpl = view()->make($template, $this->dataForView);
+                try {
+                    $tpl = view()->make($template, $this->dataForView);
+                } catch (BindingResolutionException) {
+                    abort(400, 'Template not found');
+                }
+
                 $templateCode = $tpl->render();
             } else {
                 // get the template and start parsing!
@@ -1384,9 +1391,9 @@ class Evo
      * @param $id
      * @param bool $loading
      *
-     * @return string|void
+     * @return string
      */
-    public function getDocumentContentFromCache($id, bool $loading = false)
+    public function getDocumentContentFromCache($id, bool $loading = false): string
     {
         $key = ($this->getConfig('cache_type') == 2) ? $this->makePageCacheKey($id) : $id;
         if ($loading) {
@@ -1436,12 +1443,10 @@ class Evo
                     }
 
                     if ($total > 0) {
-                        $this->sendUnauthorizedPage();
+                        return $this->sendUnauthorizedPage();
                     } else {
-                        $this->sendErrorPage();
+                        return $this->sendErrorPage();
                     }
-
-                    exit; // stop here
                 }
             }
 
