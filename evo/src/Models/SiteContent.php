@@ -370,4 +370,45 @@ class SiteContent extends Model
     {
         return $this->qualifyColumn($this->getDeletedColumn());
     }
+
+    /**
+     * @param $query
+     * @param array $tvList
+     * @param string $sep
+     * @param bool $tree
+     *
+     * @return mixed
+     */
+    public function scopeWithTVs($query, array $tvList = [], string $sep = ':', bool $tree = false)
+    {
+        $main_table = 'site_content';
+        if ($tree) {
+            $main_table = 't2';
+        }
+        if (!empty($tvList)) {
+            $query->addSelect($main_table . '.*');
+            $tvList = array_unique($tvList);
+            $tvListWithDefaults = [];
+            foreach ($tvList as $v) {
+                $tmp = explode($sep, $v, 2);
+                $tvListWithDefaults[$tmp[0]] = !empty($tmp[1]) ? trim($tmp[1]) : '';
+            }
+            $tvs = SiteTmplvar::whereIn('name', array_keys($tvListWithDefaults))->get()->pluck('id', 'name')->toArray();
+            foreach ($tvs as $tvname => $tvid) {
+                $query = $query->leftJoin('site_tmplvar_contentvalues as tv_' . $tvname, function ($join) use ($main_table, $tvid, $tvname) {
+                    $join->on($main_table . '.id', '=', 'tv_' . $tvname . '.contentid')->where('tv_' . $tvname . '.tmplvarid', '=', $tvid);
+                });
+                $query = $query->addSelect('tv_' . $tvname . '.value as ' . $tvname);
+                $query = $query->groupBy('tv_' . $tvname . '.value');
+                if (!empty($tvListWithDefaults[$tvname]) && $tvListWithDefaults[$tvname] == 'd') {
+                    $query = $query->leftJoin('site_tmplvars as tvd_' . $tvname, function ($join) use ($tvid, $tvname) {
+                        $join->where('tvd_' . $tvname . '.id', '=', $tvid);
+                    });
+
+                }
+            }
+            $query->groupBy($main_table . '.id');
+        }
+        return $query;
+    }
 }
