@@ -351,7 +351,7 @@ class Evo
             }
 
             if ($this->getConfig('seostrict')) {
-                return $this->sendStrictURI();
+                $this->sendStrictURI();
             }
 
             return $this->prepareResponse();
@@ -580,24 +580,22 @@ class Evo
                     "Redirection attempt failed - please ensure the document you're trying to redirect to exists. <p>Redirection URL: <i>" .
                     $url . '</i></p>'
                 );
-                exit;
+                return;
             }
             $url .= (Str::contains($url, '?') ? '&' : '?') . 'err=' . ($currentNumberOfRedirects + 1);
         }
 
         if ($type === 'REDIRECT_REFRESH') {
             header('Refresh: 0;URL=' . $url);
-            exit;
+            return;
         }
 
         if ($type === 'REDIRECT_META') {
-            echo '<META HTTP-EQUIV="Refresh" CONTENT="0; URL=' . $url . '" />';
-            exit;
+            return '<META HTTP-EQUIV="Refresh" CONTENT="0; URL=' . $url . '" />';
         }
 
         if ($type === 'REDIRECT_JS') {
-            echo sprintf("<script>window.location.href='%s';</script>", $url);
-            exit;
+            return sprintf("<script>window.location.href='%s';</script>", $url);
         }
 
         if ($type && $type !== 'REDIRECT_HEADER') {
@@ -4427,14 +4425,14 @@ class Evo
     }
 
     /**
-     * @return void
+     * @return false|void|null
      */
-    public function sendStrictURI(): void
+    public function sendStrictURI()
     {
         $url = app('evo.url')->strictURI($this->q, $this->documentIdentifier);
 
         if ($url !== null) {
-            $this->sendRedirect($url, 0, 'REDIRECT_HEADER', 'HTTP/1.0 301 Moved Permanently');
+            return $this->sendRedirect($url, 0, 'REDIRECT_HEADER', 'HTTP/1.0 301 Moved Permanently');
         }
     }
 
