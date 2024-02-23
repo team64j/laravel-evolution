@@ -285,7 +285,7 @@ class SiteContent extends Model
                 $tmplvar->withoutRelations()->toArray(),
                 [
                     'value' => $value,
-                    'category_name' => $category->category ?: Lang::get('global.no_category'),
+                    'category_name' => $category->category ?? Lang::get('global.no_category'),
                     'pivot_rank' => $tmplvar->pivot->rank,
                 ]
             );
