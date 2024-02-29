@@ -23,6 +23,9 @@ use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
  * @property int $template
  * @property int $deleted
  * @property int $richtext
+ * @property int $hidemenu
+ * @property int $published
+ * @property int $hide_from_tree
  * @property string $alias
  * @property string $pagetitle
  * @property string $type

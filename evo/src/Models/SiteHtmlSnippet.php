@@ -13,6 +13,8 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property int $category
  * @property int $locked
  * @property int $disabled
+ * @property string $name
+ * @property string $description
  */
 class SiteHtmlSnippet extends Model
 {
