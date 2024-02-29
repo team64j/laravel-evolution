@@ -617,7 +617,7 @@ class Parser
                 $template = 'tpl-' . $doc['template'];
                 break;
             case view()->exists($templateAlias):
-                $namespace = trim($this->core->getConfig('ControllerNamespace', ''));
+                $namespace = trim($this->core->getConfig('ControllerNamespace', '') ?: '');
                 if (!empty($namespace)) {
                     $baseClassName = $namespace . 'BaseController';
                     if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
