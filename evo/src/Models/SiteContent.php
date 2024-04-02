@@ -270,8 +270,10 @@ class SiteContent extends Model
 
             switch ($tmplvar->type) {
                 case 'radio':
-                case 'checkbox':
                 case 'option':
+                    break;
+
+                case 'checkbox':
                 case 'listbox-multiple':
                     if (!is_array($value)) {
                         $value = $value == '' ? [] : explode('||', $value);
