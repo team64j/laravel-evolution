@@ -55,7 +55,7 @@ if (!defined('MGR_DIR')) {
 }
 
 if (!defined('EVO_CORE_PATH')) {
-    define('EVO_CORE_PATH', env('EVO_CORE_PATH', dirname(__DIR__) . '/'));
+    define('EVO_CORE_PATH', env('EVO_CORE_PATH', base_path() . '/'));
 }
 
 if (!defined('EVO_STORAGE_PATH')) {
@@ -105,7 +105,7 @@ if (!defined('MODX_BASE_PATH') || !defined('MODX_BASE_URL')) {
     unset($separator);
 
     reset($items);
-    $items = explode('/' . MGR_DIR, str_replace('\\', '/', dirname(__DIR__, 2)));
+    $items = explode('/' . MGR_DIR, str_replace('\\', '/', base_path()));
     if (count($items) > 1) {
         array_pop($items);
     }

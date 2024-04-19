@@ -3864,6 +3864,26 @@ class Evo
     }
 
     /**
+     * Returns the placeholder value
+     *
+     * @param string $name Placeholder name
+     *
+     * @return mixed Placeholder value
+     */
+    public function getPlaceholder(string $name): mixed
+    {
+        return $this->placeholders[$name] ?? null;
+    }
+
+    /**
+     * @return array
+     */
+    public function getPlaceholders(): array
+    {
+        return $this->placeholders;
+    }
+
+    /**
      * @param $subject
      * @param string $prefix
      *
