@@ -712,12 +712,12 @@ class UrlProcessor
         }
 
         $strictURL = $this->toAlias($this->makeUrl($id));
-        if (strpos($strictURL, $this->core->getConfig('base_url')) === 0) {
-            $strictURL = substr($strictURL, strlen($this->core->getConfig('base_url')));
+        if (str_starts_with($strictURL, $this->core->getConfig('base_url'))) {
+            $strictURL = '/' . ltrim(substr($strictURL, strlen($this->core->getConfig('base_url'))), '/');
         }
 
         $url_path = $query;
-        if (strpos($url_path, $this->core->getConfig('base_url')) === 0) {
+        if (str_starts_with($url_path, $this->core->getConfig('base_url'))) {
             $url_path = substr($url_path, strlen($this->core->getConfig('base_url')));
         }
 
