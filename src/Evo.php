@@ -2035,7 +2035,7 @@ class Evo
                 $rc++;
                 if ($lc === $rc) {
                     // #1200 Enable modifiers in Wayfinder - add nested placeholders to $tags like for $fetch = "phx:input=`[+wf.linktext+]`:test"
-                    if ($this->config['enable_filter'] == 1 or class_exists('PHxParser')) {
+                    if ($this->getConfig('enable_filter') == 1 or class_exists('PHxParser')) {
                         if (Str::contains($fetch, $left)) {
                             $nested = $this->_getTagsFromContent($fetch, $left, $right);
                             foreach ($nested as $tag) {
