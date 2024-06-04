@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Lang;
@@ -35,7 +36,7 @@ use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
  * @property SiteContent $parents
  * @property SiteTmplvarContentvalue[]|Collection $templateValues
  * @property DocumentgroupName[]|Collection $documentGroups
- * @method static|self|Builder withoutProtected()
+ * @method static |self|Builder withoutProtected()
  */
 class SiteContent extends Model
 {
@@ -105,7 +106,7 @@ class SiteContent extends Model
         'editedon' => 'datetime',
         'deleted' => 'int',
         'deletedby' => 'int',
-        'publishedon' => 'datetime',
+        'publishedon' => 'int',
         'publishedby' => 'int',
         'hide_from_tree' => 'int',
         'privateweb' => 'int',
@@ -153,85 +154,85 @@ class SiteContent extends Model
         'alias_visible',
     ];
 
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setDescriptionAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setIntrotextAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setMenutitleAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setLongtitleAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setLinkAttributesAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setCreatedonAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setEditedonAttribute($value): string
-    {
-        return (string) $value;
-    }
-
-    /**
-     * @param $value
-     *
-     * @return string
-     */
-    public function setPublishedonAttribute($value): string
-    {
-        return (string) $value;
-    }
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setDescriptionAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setIntrotextAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setMenutitleAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setLongtitleAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setLinkAttributesAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setCreatedonAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setEditedonAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
+//
+//    /**
+//     * @param $value
+//     *
+//     * @return string
+//     */
+//    public function setPublishedonAttribute($value): string
+//    {
+//        return (string) $value;
+//    }
 
     /**
      * @param $value
@@ -251,6 +252,59 @@ class SiteContent extends Model
     public function getEditedonAttribute($value): string
     {
         return $this->convertDateTime($value);
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function getPubDateAttribute($value): string
+    {
+        return $this->serializeDate(Carbon::parse($value));
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function getUnpubDateAttribute($value): string
+    {
+        return $this->serializeDate(Carbon::parse($value));
+    }
+
+    /**
+     * @param $value
+     *
+     * @return string
+     */
+    public function getPublishedonAttribute($value): string
+    {
+        return $this->serializeDate(Carbon::parse($value));
+    }
+
+    /**
+     * @param array $attributes
+     * @param array $options
+     *
+     * @return bool
+     */
+    public function update(array $attributes = [], array $options = []): bool
+    {
+        if (isset($attributes['pub_date']) && is_string($attributes['pub_date'])) {
+            $attributes['pub_date'] = Carbon::parse($attributes['pub_date'])->timestamp;
+        }
+
+        if (isset($attributes['unpub_date']) && is_string($attributes['unpub_date'])) {
+            $attributes['unpub_date'] = Carbon::parse($attributes['unpub_date'])->timestamp;
+        }
+
+        if (isset($attributes['publishedon']) && is_string($attributes['publishedon'])) {
+            $attributes['publishedon'] = Carbon::parse($attributes['publishedon'])->timestamp;
+        }
+
+        return parent::update($attributes, $options);
     }
 
     /**
@@ -324,7 +378,7 @@ class SiteContent extends Model
     /**
      * @return Builder|BelongsTo
      */
-    public function parents(): BelongsTo | Builder
+    public function parents(): BelongsTo|Builder
     {
         return $this->belongsTo(SiteContent::class, 'parent', 'id')->with('parents');
     }
@@ -361,7 +415,7 @@ class SiteContent extends Model
      *
      * @return string
      */
-    public function getDeletedColumn()
+    public function getDeletedColumn(): string
     {
         return defined('static::DELETED') ? static::DELETED : 'deleted';
     }
@@ -371,7 +425,7 @@ class SiteContent extends Model
      *
      * @return string
      */
-    public function getQualifiedDeletedColumn()
+    public function getQualifiedDeletedColumn(): string
     {
         return $this->qualifyColumn($this->getDeletedColumn());
     }
@@ -387,9 +441,11 @@ class SiteContent extends Model
     public function scopeWithTVs($query, array $tvList = [], string $sep = ':', bool $tree = false)
     {
         $main_table = 'site_content';
+
         if ($tree) {
             $main_table = 't2';
         }
+
         if (!empty($tvList)) {
             $query->addSelect($main_table . '.*');
             $tvList = array_unique($tvList);
@@ -400,20 +456,27 @@ class SiteContent extends Model
             }
             $tvs = SiteTmplvar::whereIn('name', array_keys($tvListWithDefaults))->get()->pluck('id', 'name')->toArray();
             foreach ($tvs as $tvname => $tvid) {
-                $query = $query->leftJoin('site_tmplvar_contentvalues as tv_' . $tvname, function ($join) use ($main_table, $tvid, $tvname) {
-                    $join->on($main_table . '.id', '=', 'tv_' . $tvname . '.contentid')->where('tv_' . $tvname . '.tmplvarid', '=', $tvid);
-                });
+                $query = $query->leftJoin(
+                    'site_tmplvar_contentvalues as tv_' . $tvname,
+                    function ($join) use ($main_table, $tvid, $tvname) {
+                        $join->on($main_table . '.id', '=', 'tv_' . $tvname . '.contentid')->where(
+                            'tv_' . $tvname . '.tmplvarid',
+                            '=',
+                            $tvid
+                        );
+                    }
+                );
                 $query = $query->addSelect('tv_' . $tvname . '.value as ' . $tvname);
                 $query = $query->groupBy('tv_' . $tvname . '.value');
                 if (!empty($tvListWithDefaults[$tvname]) && $tvListWithDefaults[$tvname] == 'd') {
                     $query = $query->leftJoin('site_tmplvars as tvd_' . $tvname, function ($join) use ($tvid, $tvname) {
                         $join->where('tvd_' . $tvname . '.id', '=', $tvid);
                     });
-
                 }
             }
             $query->groupBy($main_table . '.id');
         }
+
         return $query;
     }
 }
