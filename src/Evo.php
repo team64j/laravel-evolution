@@ -48,7 +48,7 @@ class Evo
     protected mixed $time;
     protected string $q;
     protected string $systemCacheKey = '';
-    protected int $documentGenerated;
+    protected int $documentGenerated = 0;
     protected array $sjscripts = [];
     protected array $jscripts = [];
     protected float $tstart = 0;
@@ -325,9 +325,9 @@ class Evo
         } else {
             header('HTTP/1.0 503 Service Unavailable');
             $this->setSystemCacheKey('unavailable');
-            if (!$this->config['site_unavailable_page']) {
+            if (!$this->getConfig('site_unavailable_page')) {
                 // display offline message
-                $this->documentContent = $this->getConfig('site_unavailable_message');
+                $this->documentContent = $this->getConfig('site_unavailable_message', 'Site unavailable');
 
                 return $this->outputContent();
             }

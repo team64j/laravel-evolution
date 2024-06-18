@@ -55,7 +55,7 @@ if (!defined('MGR_DIR')) {
 }
 
 if (!defined('EVO_CORE_PATH')) {
-    define('EVO_CORE_PATH', env('EVO_CORE_PATH', base_path() . '/'));
+    define('EVO_CORE_PATH', env('EVO_CORE_PATH', dirname(__DIR__) . '/'));
 }
 
 if (!defined('EVO_STORAGE_PATH')) {
