@@ -718,7 +718,7 @@ class UrlProcessor
 
         $url_path = $query;
         if (str_starts_with($url_path, $this->core->getConfig('base_url'))) {
-            $url_path = substr($url_path, strlen($this->core->getConfig('base_url')));
+            $url_path = '/' . substr($url_path, strlen($this->core->getConfig('base_url')));
         }
 
         if (stripos($_SERVER['REQUEST_URI'], '/?q=' . $strictURL) !== false
