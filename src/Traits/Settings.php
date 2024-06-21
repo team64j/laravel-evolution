@@ -124,14 +124,14 @@ trait Settings
      */
     public function getSettings()
     {
-        if ($config = Config::get('global')) {
-            return $this->config = $config;
-        }
+//        if ($config = Config::get('global')) {
+//            return $this->config = $config;
+//        }
 
         $this->config = Cache::rememberForever(
             'config.global',
             function () {
-                $config = array_merge(
+                $this->config = array_merge(
                     $this->getFactorySettings(),
                     $this->config,
                     SystemSetting::query()
@@ -177,7 +177,7 @@ trait Settings
                     )
                 );
 
-                return $config;
+                return $this->config;
             }
         );
 

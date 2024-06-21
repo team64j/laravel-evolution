@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
-use EvolutionCMS\DocumentManager\Facades\DocumentManager;
 use EvolutionCMS\Models\DocumentGroup;
 use EvolutionCMS\Models\DocumentgroupName;
 use EvolutionCMS\Models\EventLog;
@@ -20,6 +19,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
@@ -106,6 +106,11 @@ class Evo
      */
     protected array $documentMap = [];
 
+    /**
+     * @var bool|float|int|mixed|string|void|null
+     */
+    protected $error_reporting;
+
     public function __construct()
     {
         app()->singleton('evo.url', fn() => new Legacy\UrlProcessor());
@@ -113,6 +118,8 @@ class Evo
         app()->singleton('evo.db', fn() => new Legacy\Database());
         app()->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
         app()->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
+
+        $this->getSettings();
     }
 
     /**
@@ -471,7 +478,7 @@ class Evo
         //$this->getService('ExceptionHandler');
 
         $this->checkAuth();
-        $this->getSettings();
+        //$this->getSettings();
         $this->q = Request::getPathInfo();
     }
 
@@ -691,6 +698,10 @@ class Evo
 
         if (empty($context)) {
             $context = $this->getContext();
+        }
+
+        if (Session::token()) {
+            return Gate::check($pm);
         }
 
         if (Session::get($context . 'Role') && Session::get($context . 'Role') == 1) {
@@ -4145,7 +4156,7 @@ class Evo
                 continue;
             } //NULL values must be saved in placeholders, if we got them from database string
 
-            $value = $ph[$key];
+            $value = (string) $ph[$key];
 
             $s = &$matches[0][$i];
             if ($modifiers !== false) {
