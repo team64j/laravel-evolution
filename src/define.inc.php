@@ -14,56 +14,56 @@ if (!defined('MODX_API_MODE')) {
     define('MODX_API_MODE', false);
 }
 
-if (! defined('IN_PARSER_MODE')) {
+if (!defined('IN_PARSER_MODE')) {
     define('IN_PARSER_MODE', false);
 }
 
 if (!defined('HTTPS_PORT')) {
-    define('HTTPS_PORT', env('HTTPS_PORT', '443')); //$https_port
+    define('HTTPS_PORT', Config::get('evo.HTTPS_PORT') ?? '443'); //$https_port
 }
 
 if (!defined('SESSION_STORAGE')) {
-    define('SESSION_STORAGE', env('SESSION_STORAGE', 'default')); // $session_cookie_path
+    define('SESSION_STORAGE', Config::get('evo.SESSION_STORAGE') ?? 'default'); // $session_cookie_path
 }
 
 if (!defined('REDIS_HOST')) {
-    define('REDIS_HOST', env('REDIS_HOST', '127.0.0.1')); // $session_cookie_path
+    define('REDIS_HOST', Config::get('evo.REDIS_HOST') ?? '127.0.0.1'); // $session_cookie_path
 }
 
 if (!defined('REDIS_PORT')) {
-    define('REDIS_PORT', env('REDIS_PORT', '6379')); // $session_cookie_path
+    define('REDIS_PORT', Config::get('evo.REDIS_PORT') ?? '6379'); // $session_cookie_path
 }
 
 if (!defined('SESSION_COOKIE_PATH')) {
-    define('SESSION_COOKIE_PATH', env('SESSION_COOKIE_PATH', '')); // $session_cookie_path
+    define('SESSION_COOKIE_PATH', Config::get('evo.SESSION_COOKIE_PATH') ?? ''); // $session_cookie_path
 }
 
 if (!defined('SESSION_COOKIE_DOMAIN')) {
-    define('SESSION_COOKIE_DOMAIN', env('SESSION_COOKIE_DOMAIN', '')); //$session_cookie_domain
+    define('SESSION_COOKIE_DOMAIN', Config::get('evo.SESSION_COOKIE_DOMAIN') ?? ''); //$session_cookie_domain
 }
 
 if (!defined('MODX_CLASS')) {
-    define('MODX_CLASS', env('MODX_CLASS', '\DocumentParser'));
+    define('MODX_CLASS', Config::get('evo.MODX_CLASS') ?? '\DocumentParser');
 }
 
 if (!defined('MODX_SITE_HOSTNAMES')) {
-    define('MODX_SITE_HOSTNAMES', env('MODX_SITE_HOSTNAMES', ''));
+    define('MODX_SITE_HOSTNAMES', Config::get('evo.MODX_SITE_HOSTNAMES') ?? '');
 }
 
 if (!defined('MGR_DIR')) {
-    define('MGR_DIR', env('MGR_DIR', 'manager'));
+    define('MGR_DIR', Config::get('evo.MGR_DIR') ?? 'manager');
 }
 
 if (!defined('EVO_CORE_PATH')) {
-    define('EVO_CORE_PATH', env('EVO_CORE_PATH', dirname(__DIR__) . '/'));
+    define('EVO_CORE_PATH', Config::get('evo.EVO_CORE_PATH') ?? dirname(__DIR__) . '/');
 }
 
 if (!defined('EVO_STORAGE_PATH')) {
-    define('EVO_STORAGE_PATH', env('EVO_STORAGE_PATH', EVO_CORE_PATH . 'storage/'));
+    define('EVO_STORAGE_PATH', Config::get('evo.EVO_STORAGE_PATH') ?? EVO_CORE_PATH . 'storage/');
 }
 
 if (!defined('EVO_CLI_USER')) {
-    define('EVO_CLI_USER', env('EVO_CLI_USER', 1));
+    define('EVO_CLI_USER', Config::get('evo.EVO_CLI_USER') ?? 1);
 }
 
 if (!defined('MODX_BASE_PATH') || !defined('MODX_BASE_URL')) {
@@ -117,12 +117,12 @@ if (!defined('MODX_BASE_PATH') || !defined('MODX_BASE_URL')) {
     );
 
     if (!defined('MODX_BASE_PATH')) {
-        define('MODX_BASE_PATH', env('MODX_BASE_PATH', $base_path));
+        define('MODX_BASE_PATH', Config::get('evo.MODX_BASE_PATH') ?? $base_path);
     }
     unset($base_path);
 
     if (!defined('MODX_BASE_URL')) {
-        define('MODX_BASE_URL', env('MODX_BASE_URL', $base_url));
+        define('MODX_BASE_URL', Config::get('evo.MODX_BASE_URL') ?? $base_url);
     }
     unset($base_url);
 }
@@ -136,7 +136,7 @@ if (!preg_match('/\/$/', MODX_BASE_URL)) {
 }
 
 if (!defined('MODX_MANAGER_PATH')) {
-    define('MODX_MANAGER_PATH', env('MODX_MANAGER_PATH', MODX_BASE_PATH . MGR_DIR . '/'));
+    define('MODX_MANAGER_PATH', Config::get('evo.MODX_MANAGER_PATH') ?? MODX_BASE_PATH . MGR_DIR . '/');
 }
 
 $server_port = isset($_SERVER['HTTP_X_FORWARDED_PORT'])
@@ -181,7 +181,7 @@ if (!defined('MODX_SITE_URL')) {
 
     $site_url .= MODX_BASE_URL;
 
-    define('MODX_SITE_URL', env('MODX_SITE_URL', $site_url));
+    define('MODX_SITE_URL', Config::get('evo.MODX_SITE_URL') ?? $site_url);
     unset($site_url);
 }
 
@@ -190,7 +190,7 @@ if (!preg_match('/\/$/', MODX_SITE_URL)) {
 }
 
 if (!defined('MODX_MANAGER_URL')) {
-    define('MODX_MANAGER_URL', env('MODX_MANAGER_URL', MODX_SITE_URL . MGR_DIR . '/'));
+    define('MODX_MANAGER_URL', Config::get('evo.MODX_MANAGER_URL') ?? MODX_SITE_URL . MGR_DIR . '/');
 }
 
 if (!defined('MODX_SANITIZE_SEED')) {

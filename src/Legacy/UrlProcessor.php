@@ -662,7 +662,7 @@ class UrlProcessor
             $url = array_pop($evtOut);
         }
 
-        return $url;
+        return '/' . ltrim($url, '/');
     }
 
     public function strictURI(string $query, int $id): ?string
@@ -679,6 +679,8 @@ class UrlProcessor
             return null;
         }
 
+        $host = $this->core->getConfig('base_url', '/');
+
         // Strip conflicting id/q from query string
         if (Str::contains($_SERVER['REQUEST_URI'], '?')) {
             $qstring = preg_replace("#(^|&)(q|id)=[^&]+#", '', Str::after($_SERVER['REQUEST_URI'], '?'));
@@ -693,14 +695,14 @@ class UrlProcessor
             if ($requestedURL === $this->core->getConfig('site_url')) {
                 return null;
             }
-            if ($this->core->getConfig('base_url') === $_SERVER['REQUEST_URI']) {
+            if ($host === $_SERVER['REQUEST_URI']) {
                 return null;
             }
             if ($_POST) {
                 return null;
             }
 
-            if ($this->core->getConfig('base_url') . '?' . $qstring === $_SERVER['REQUEST_URI']) {
+            if ($host . '?' . $qstring === $_SERVER['REQUEST_URI']) {
                 return null;
             }
             $url = $this->core->getConfig('site_url');
@@ -712,13 +714,13 @@ class UrlProcessor
         }
 
         $strictURL = $this->toAlias($this->makeUrl($id));
-        if (str_starts_with($strictURL, $this->core->getConfig('base_url'))) {
-            $strictURL = '/' . ltrim(substr($strictURL, strlen($this->core->getConfig('base_url'))), '/');
+        if (str_starts_with($strictURL, $host)) {
+            $strictURL = '/' . ltrim(substr($strictURL, strlen($host)), '/');
         }
 
         $url_path = $query;
-        if (str_starts_with($url_path, $this->core->getConfig('base_url'))) {
-            $url_path = '/' . substr($url_path, strlen($this->core->getConfig('base_url')));
+        if (str_starts_with($url_path, $host)) {
+            $url_path = '/' . substr($url_path, strlen($host));
         }
 
         if (stripos($_SERVER['REQUEST_URI'], '/?q=' . $strictURL) !== false

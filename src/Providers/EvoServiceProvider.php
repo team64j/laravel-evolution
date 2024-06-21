@@ -59,6 +59,8 @@ class EvoServiceProvider extends ServiceProvider
      */
     protected function registerConfig(): void
     {
+        $this->mergeConfigFrom(__DIR__ . '/../../config/evo.php', 'evo');
+
         if (!$this->app->configurationIsCached()) {
             Config::set('database.connections.' . Config::get('database.default') . '.prefix', env('DB_PREFIX', ''));
         }

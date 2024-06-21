@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'REDIS_HOST' => env('REDIS_HOST'),
+    'REDIS_PORT' => env('REDIS_PORT'),
+
+    'HTTPS_PORT' => env('HTTPS_PORT'),
+
+    'SESSION_STORAGE' => env('SESSION_STORAGE'),
+    'SESSION_COOKIE_PATH' => env('SESSION_COOKIE_PATH'),
+    'SESSION_COOKIE_DOMAIN' => env('SESSION_COOKIE_DOMAIN'),
+
+    'MODX_CLASS' => env('MODX_CLASS'),
+    'MODX_SITE_URL' => env('MODX_SITE_URL'),
+    'MODX_BASE_URL' => env('MODX_BASE_URL'),
+    'MODX_BASE_PATH' => env('MODX_BASE_PATH'),
+    'MODX_SITE_HOSTNAMES' => env('MODX_SITE_HOSTNAMES'),
+    'MODX_MANAGER_PATH' => env('MODX_MANAGER_PATH'),
+    'MODX_MANAGER_URL' => env('MODX_MANAGER_URL'),
+
+    'MGR_DIR' => env('MGR_DIR'),
+    'EVO_CLI_USER' => env('EVO_CLI_USER'),
+    'EVO_CORE_PATH' => env('EVO_CORE_PATH'),
+    'EVO_STORAGE_PATH' => env('EVO_STORAGE_PATH'),
+];
