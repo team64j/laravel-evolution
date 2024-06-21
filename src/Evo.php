@@ -119,7 +119,7 @@ class Evo
         app()->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
         app()->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
 
-        $this->getSettings();
+        $this->initialize();
     }
 
     /**
@@ -478,7 +478,7 @@ class Evo
         //$this->getService('ExceptionHandler');
 
         $this->checkAuth();
-        //$this->getSettings();
+        $this->getSettings();
         $this->q = Request::getPathInfo();
     }
 
