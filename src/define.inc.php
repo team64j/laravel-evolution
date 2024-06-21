@@ -55,11 +55,11 @@ if (!defined('MGR_DIR')) {
 }
 
 if (!defined('EVO_CORE_PATH')) {
-    define('EVO_CORE_PATH', Config::get('evo.EVO_CORE_PATH') ?? dirname(__DIR__) . '/');
+    define('EVO_CORE_PATH', Config::get('evo.EVO_CORE_PATH') ?? (dirname(__DIR__) . '/'));
 }
 
 if (!defined('EVO_STORAGE_PATH')) {
-    define('EVO_STORAGE_PATH', Config::get('evo.EVO_STORAGE_PATH') ?? EVO_CORE_PATH . 'storage/');
+    define('EVO_STORAGE_PATH', Config::get('evo.EVO_STORAGE_PATH') ?? (EVO_CORE_PATH . 'storage/'));
 }
 
 if (!defined('EVO_CLI_USER')) {
@@ -136,7 +136,7 @@ if (!preg_match('/\/$/', MODX_BASE_URL)) {
 }
 
 if (!defined('MODX_MANAGER_PATH')) {
-    define('MODX_MANAGER_PATH', Config::get('evo.MODX_MANAGER_PATH') ?? MODX_BASE_PATH . MGR_DIR . '/');
+    define('MODX_MANAGER_PATH', Config::get('evo.MODX_MANAGER_PATH') ?? (MODX_BASE_PATH . MGR_DIR . '/'));
 }
 
 $server_port = isset($_SERVER['HTTP_X_FORWARDED_PORT'])
@@ -190,7 +190,7 @@ if (!preg_match('/\/$/', MODX_SITE_URL)) {
 }
 
 if (!defined('MODX_MANAGER_URL')) {
-    define('MODX_MANAGER_URL', Config::get('evo.MODX_MANAGER_URL') ?? MODX_SITE_URL . MGR_DIR . '/');
+    define('MODX_MANAGER_URL', Config::get('evo.MODX_MANAGER_URL') ?? (MODX_SITE_URL . MGR_DIR . '/'));
 }
 
 if (!defined('MODX_SANITIZE_SEED')) {
