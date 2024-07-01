@@ -14,6 +14,7 @@ use EvolutionCMS\Models\SiteTemplate;
 use EvolutionCMS\Models\SiteTmplvar;
 use EvolutionCMS\Models\User;
 use Exception;
+use FilesystemIterator;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -23,6 +24,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use stdClass;
 use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
 use Team64j\LaravelEvolution\Legacy\Event;
@@ -358,7 +362,7 @@ class Evo
             }
 
             if ($this->getConfig('seostrict')) {
-                $this->sendStrictURI();
+                return $this->sendStrictURI();
             }
 
             return $this->prepareResponse();
@@ -404,6 +408,7 @@ class Evo
 
                         $found = false;
 
+                        /** @var SiteContent $doc */
                         foreach ($docs as $doc) {
                             $tmp_parent = $doc->parent;
                             while (isset($hidden[$tmp_parent])) {
@@ -434,7 +439,7 @@ class Evo
                         ->first();
 
                     if (is_null($doc)) {
-                        $this->sendErrorPage();
+                        return $this->sendErrorPage();
                     }
 
                     $this->documentIdentifier = $doc->getKey();
@@ -456,7 +461,7 @@ class Evo
         }
 
         if ($this->getConfig('seostrict')) {
-            $this->sendStrictURI();
+            return $this->sendStrictURI();
         }
 
         return $this->prepareResponse();
@@ -3615,7 +3620,6 @@ class Evo
         $key = $snip_call['name'];
 
         [$key, $modifiers] = $this->splitKeyAndFilter($key);
-        $snip_call['name'] = $key;
         $snippetObject = $this->getSnippetObject($key);
         if ($snippetObject['content'] === null) {
             return null;
@@ -3639,15 +3643,10 @@ class Evo
         }
 
         if ($this->dumpSnippets) {
-            $eventtime = $this->getMicroTime() - $eventtime;
-            $eventtime = sprintf('%2.2f ms', $eventtime * 1000);
-            $code = str_replace("\t", '  ', $this->getPhpCompat()->htmlspecialchars($value));
-            $piece = str_replace("\t", '  ', $this->getPhpCompat()->htmlspecialchars($piece));
-            $print_r_params = str_replace(
-                "\t",
-                '  ',
-                $this->getPhpCompat()->htmlspecialchars('$modx->event->params = ' . print_r($params, true))
-            );
+            $eventtime = sprintf('%2.2f ms', ($this->getMicroTime() - $eventtime) * 1000);
+            $code = str_replace("\t", '  ', e($value));
+            $piece = str_replace("\t", '  ', e($piece));
+            $print_r_params = str_replace("\t", '  ', e('$modx->event->params = ' . print_r($params, true)));
             $this->snippetsCode .= '<fieldset style="margin:1em;"><legend><b>' . $snippetObject['name'] . '</b>(' .
                 $eventtime . ')</legend><pre style="white-space: pre-wrap;background-color:#fff;width:90%%;">[[' .
                 $piece . ']]</pre><pre style="white-space: pre-wrap;background-color:#fff;width:90%%;">' .
@@ -4505,12 +4504,12 @@ class Evo
     /**
      * @param $name
      * @param $phpCode
-     * @param $namespace
+     * @param string $namespace
      * @param array $defaultParams
      *
      * @return void
      */
-    public function addSnippet($name, $phpCode, $namespace = '#', array $defaultParams = [])
+    public function addSnippet($name, $phpCode, string $namespace = '#', array $defaultParams = []): void
     {
         $this->snippetCache[$namespace . $name] = $phpCode;
         $this->snippetCache[$namespace . $name . 'Props'] = $defaultParams;
@@ -4519,11 +4518,11 @@ class Evo
     /**
      * @param $name
      * @param $text
-     * @param $namespace
+     * @param string $namespace
      *
      * @return void
      */
-    public function addChunk($name, $text, $namespace = '#')
+    public function addChunk($name, $text, string $namespace = '#'): void
     {
         $this->chunkCache[$namespace . $name] = $text;
     }
@@ -4536,21 +4535,21 @@ class Evo
      * @return array
      * @throws Exception
      */
-    public function findElements($type, $scanPath, array $ext)
+    public function findElements($type, $scanPath, array $ext): array
     {
         $out = [];
 
         if (!is_dir($scanPath) || empty($ext)) {
             return $out;
         }
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($scanPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($scanPath, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
         );
+
         foreach ($iterator as $item) {
-            /**
-             * @var \SplFileInfo $item
-             */
+            /** @var SplFileInfo $item */
             if ($item->isFile() && $item->isReadable() && in_array($item->getExtension(), $ext)) {
                 $name = $item->getBasename('.' . $item->getExtension());
                 $path = ltrim(str_replace(
@@ -4562,16 +4561,11 @@ class Evo
                 if (!empty($path)) {
                     $name = $path . $name;
                 }
-                switch ($type) {
-                    case 'chunk':
-                        $out[$name] = file_get_contents($item->getRealPath());
-                        break;
-                    case 'snippet':
-                        $out[$name] = "return require '" . $item->getRealPath() . "';";
-                        break;
-                    default:
-                        throw new Exception;
-                }
+                $out[$name] = match ($type) {
+                    'chunk' => file_get_contents($item->getRealPath()),
+                    'snippet' => "return require '" . $item->getRealPath() . "';",
+                    default => throw new Exception,
+                };
             }
         }
 
