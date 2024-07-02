@@ -175,6 +175,21 @@ class SiteTmplvar extends Model
     }
 
     /**
+     * @return BelongsToMany
+     */
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            SiteTemplate::class,
+            (new SiteTmplvarAccess())->getTable(),
+            'tmplvarid',
+            'documentgroup',
+            null,
+            'id'
+        );
+    }
+
+    /**
      * @return HasMany
      */
     public function tmplvarContentvalue(): HasMany
