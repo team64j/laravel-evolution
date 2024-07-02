@@ -6,6 +6,7 @@ namespace EvolutionCMS\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
@@ -21,6 +22,8 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property string $type
  * @property string $default_text
  * @property Category $categories
+ * @property array|SiteTemplate[] $templates
+ * @property array|UserRole[] $roles
  */
 class SiteTmplvar extends Model
 {
@@ -90,6 +93,42 @@ class SiteTmplvar extends Model
     ];
 
     /**
+     * @var array
+     */
+    protected array $displayWidgets = [
+        'datagrid' => 'Data Grid',
+        'richtext' => 'RichText',
+        'viewport' => 'View Port',
+        'custom_widget' => 'Custom Widget',
+    ];
+
+    /**
+     * @var array
+     */
+    protected array $displayFormats = [
+        'htmlentities' => 'HTML Entities',
+        'date' => 'Date Formatter',
+        'unixtime' => 'Unixtime',
+        'delim' => 'Delimited List',
+        'htmltag' => 'HTML Generic Tag',
+        'hyperlink' => 'Hyperlink',
+        'image' => 'Image',
+        'string' => 'String Formatter',
+    ];
+
+    /**
+     * @return bool|null
+     */
+    public function delete(): ?bool
+    {
+        $this->tmplvarContentvalue()->delete();
+        $this->tmplvarAccess()->delete();
+        $this->tmplvarTemplate()->delete();
+
+        return parent::delete();
+    }
+
+    /**
      * @return BelongsTo
      */
     public function category(): BelongsTo
@@ -106,15 +145,33 @@ class SiteTmplvar extends Model
     }
 
     /**
-     * @return bool|null
+     * @return BelongsToMany
      */
-    public function delete(): ?bool
+    public function templates(): BelongsToMany
     {
-        $this->tmplvarContentvalue()->delete();
-        $this->tmplvarAccess()->delete();
-        $this->tmplvarTemplate()->delete();
+        return $this->belongsToMany(
+            SiteTemplate::class,
+            (new SiteTmplvarTemplate())->getTable(),
+            'tmplvarid',
+            'templateid'
+        )
+            ->withPivot('rank')
+            ->orderBy('pivot_rank', 'ASC');
+    }
 
-        return parent::delete();
+    /**
+     * @return BelongsToMany
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            UserRole::class,
+            (new UserRoleVar())->getTable(),
+            'tmplvarid',
+            'roleid'
+        )
+            ->withPivot('rank')
+            ->orderBy('pivot_rank', 'ASC');
     }
 
     /**
@@ -234,5 +291,50 @@ class SiteTmplvar extends Model
     public function getStandardTypes(): array
     {
         return $this->standardTypes;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDisplayFormats(): array
+    {
+        return $this->displayFormats;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDisplayWidgets(): array
+    {
+        return $this->displayWidgets;
+    }
+
+    /**
+     * @param string|null $key
+     *
+     * @return array|string|null
+     */
+    public function getDisplay(string $key = null): array|string|null
+    {
+        if (!is_null($key)) {
+            return ($this->displayWidgets + $this->displayFormats)[$key] ?? null;
+        }
+
+        return [
+            [
+                'name' => 'Widgets',
+                'data' => array_map(fn($key, $value) => [
+                    'key' => $key,
+                    'value' => $value,
+                ], array_keys($this->displayWidgets), $this->displayWidgets),
+            ],
+            [
+                'name' => 'Formats',
+                'data' => array_map(fn($key, $value) => [
+                    'key' => $key,
+                    'value' => $value,
+                ], array_keys($this->displayFormats), $this->displayFormats),
+            ],
+        ];
     }
 }
