@@ -22,8 +22,9 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property string $type
  * @property string $default_text
  * @property Category $categories
- * @property array|SiteTemplate[] $templates
  * @property array|UserRole[] $roles
+ * @property array|SiteTemplate[] $templates
+ * @property array|DocumentgroupName[] $permissions
  */
 class SiteTmplvar extends Model
 {
@@ -180,12 +181,10 @@ class SiteTmplvar extends Model
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(
-            SiteTemplate::class,
+            DocumentgroupName::class,
             (new SiteTmplvarAccess())->getTable(),
             'tmplvarid',
-            'documentgroup',
-            null,
-            'id'
+            'documentgroup'
         );
     }
 
