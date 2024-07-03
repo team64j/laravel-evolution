@@ -21,6 +21,8 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property int $locked
  * @property string $type
  * @property string $default_text
+ * @property string $display
+ * @property string $display_params
  * @property Category $categories
  * @property array|UserRole[] $roles
  * @property array|SiteTemplate[] $templates
