@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace EvolutionCMS\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Team64j\LaravelEvolution\Traits\LockedTrait;
 
 /**
@@ -18,6 +20,7 @@ use Team64j\LaravelEvolution\Traits\LockedTrait;
  * @property string $plugincode
  * @property string $properties
  * @property Category $categories
+ * @property SystemEventname[]|Collection $events
  * @method static Builder|SitePlugin activePhx()
  */
 class SitePlugin extends Model
@@ -74,9 +77,29 @@ class SitePlugin extends Model
         return $this->belongsTo(Category::class, 'category', 'id');
     }
 
-    public function scopeActivePhx(Builder $builder)
+    /**
+     * @param Builder $builder
+     *
+     * @return Builder
+     */
+    public function scopeActivePhx(Builder $builder): Builder
     {
         return $builder->where('disabled', '!=', 1)
             ->where('plugincode', 'LIKE', "%phx.parser.class.inc.php%OnParseDocument();%");
+    }
+
+    /**
+     * @return HasManyThrough
+     */
+    public function events(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            SystemEventname::class,
+            SitePluginEvent::class,
+            'pluginid',
+            'id',
+            'id',
+            'evtid',
+        );
     }
 }
