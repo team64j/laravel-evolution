@@ -63,20 +63,6 @@ class SiteTemplate extends Model
     ];
 
     /**
-     * @param array $attributes
-     */
-    public function __construct(array $attributes = [])
-    {
-        $this->setRawAttributes([
-            'icon' => '',
-            'category' => 0,
-            'selectable' => 1,
-        ]);
-
-        parent::__construct($attributes);
-    }
-
-    /**
      * @return BelongsTo
      */
     public function category(): BelongsTo
