@@ -27,7 +27,7 @@ class Database extends Manager
 
     public $config;
 
-    public function __construct(Container $container = null)
+    public function __construct(?Container $container = null)
     {
         parent::__construct($container);
         $this->prepareNativeConfig();

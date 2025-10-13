@@ -136,7 +136,7 @@ if (!function_exists('get_by_key')) {
      *
      * @return mixed
      */
-    function get_by_key(mixed $data, int|string $key, mixed $default = null, Closure|string $validate = null): mixed
+    function get_by_key(mixed $data, int|string $key, mixed $default = null, Closure|string | null $validate = null): mixed
     {
         $out = $default;
         $found = false;

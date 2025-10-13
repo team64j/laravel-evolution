@@ -15,7 +15,7 @@ trait TimeMutatorTrait
      *
      * @return string
      */
-    protected function convertDateTime(int | string $value = null, string $default = null): string
+    protected function convertDateTime(int | string | null $value = null, ?string $default = null): string
     {
         if (!$value) {
             $value = $default;

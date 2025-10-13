@@ -1553,7 +1553,7 @@ class Evo
      *
      * @return array
      */
-    public function getDocumentObjectFromCache($method, $identifier, string $isPrepareResponse = null): array
+    public function getDocumentObjectFromCache($method, $identifier, ?string $isPrepareResponse = null): array
     {
         return Cache::rememberForever(
             __FUNCTION__ . $identifier,
@@ -1570,7 +1570,7 @@ class Evo
      *
      * @return array
      */
-    public function getDocumentObject($method, $identifier, string $isPrepareResponse = null): array
+    public function getDocumentObject($method, $identifier, ?string $isPrepareResponse = null): array
     {
         $cacheKey = md5(print_r(func_get_args(), true));
 
@@ -2191,7 +2191,7 @@ class Evo
      *
      * @return string
      */
-    public function mergeSettingsContent(string $content, array $ph = null): string
+    public function mergeSettingsContent(string $content, ?array $ph = null): string
     {
         if ($this->getConfig('enable_at_syntax')) {
             if (stripos($content, '<@LITERAL>') !== false) {
@@ -2536,7 +2536,7 @@ class Evo
      *
      * @return string
      */
-    public function applyFilter(string $value = '', string $modifiers = null, string $key = ''): string
+    public function applyFilter(string $value = '', ?string $modifiers = null, string $key = ''): string
     {
         if (!$modifiers || $modifiers === 'raw') {
             return $value;
@@ -2627,7 +2627,7 @@ class Evo
      *
      * @return false|mixed|string
      */
-    public function _contextValue(string $key, int $parent = null): mixed
+    public function _contextValue(string $key, ?int $parent = null): mixed
     {
         if (preg_match('/@\d+\/u/', $key)) {
             $key = str_replace(['@', '/u'], ['@u(', ')'], $key);
@@ -2967,7 +2967,7 @@ class Evo
      */
     public function getTemplateVarOutput(
         array $idnames = [],
-        int $docid = null,
+        ?int $docid = null,
         int $published = 1,
         string $sep = ''): bool|array
     {
@@ -3226,7 +3226,7 @@ class Evo
      *
      * @return string
      */
-    public function mergeChunkContent(string $content, array $ph = null): string
+    public function mergeChunkContent(string $content, ?array $ph = null): string
     {
         if ($this->getConfig('enable_at_syntax')) {
             if (Str::contains($content, '{{ ')) {
@@ -3807,7 +3807,7 @@ class Evo
      *
      * @return array|mixed|string
      */
-    public function runSnippet($snippetName, array $params = [], int $cacheTime = null, string $cacheKey = null): mixed
+    public function runSnippet($snippetName, array $params = [], ?int $cacheTime = null, ?string $cacheKey = null): mixed
     {
         $arrPlaceholderCheck = [];
 
@@ -3944,7 +3944,7 @@ class Evo
      *
      * @return string
      */
-    public function mergePlaceholderContent(string $content, array $ph = null): string
+    public function mergePlaceholderContent(string $content, ?array $ph = null): string
     {
         if ($this->getConfig('enable_at_syntax')) {
             if (stripos($content, '<@LITERAL>') !== false) {
