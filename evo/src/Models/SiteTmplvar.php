@@ -330,7 +330,7 @@ class SiteTmplvar extends Model
      *
      * @return array|string
      */
-    public function getDisplay(string $key = null): array|string
+    public function getDisplay(?string $key = null): array|string
     {
         if (!is_null($key)) {
             return ($this->displayWidgets + $this->displayFormats)[$key] ?? '';

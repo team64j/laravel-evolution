@@ -188,14 +188,14 @@ if (!function_exists('ProcessTVCommand')) {
      * @param string $src
      * @param array $tvsArray
      *
-     * @return string
+     * @return array|string
      */
     function ProcessTVCommand(
         string $value,
         string $name = '',
         string $docid = '',
         string $src = 'docform',
-        array $tvsArray = [])
+        array $tvsArray = []): array | string
     {
         $modx = evo();
         $docid = (int) $docid;
@@ -203,7 +203,7 @@ if (!function_exists('ProcessTVCommand')) {
             $docid = $modx->documentIdentifier;
         }
         $nvalue = trim($value);
-        if (strpos($nvalue, '@') !== 0) {
+        if (!str_starts_with($nvalue, '@')) {
             return $value;
         }
 
@@ -354,7 +354,7 @@ if (!function_exists('ParseCommand')) {
 
         $binding_array = [];
         foreach ($BINDINGS as $cmd) {
-            if (strpos($binding_string, '@' . $cmd) === 0) {
+            if (str_starts_with($binding_string, '@' . $cmd)) {
                 $code = substr($binding_string, strlen($cmd) + 1);
                 $binding_array = [$cmd, trim($code)];
                 break;
@@ -374,16 +374,14 @@ if (!function_exists('parseTvValues')) {
      *
      * @return array|string
      */
-    function parseTvValues(string $param, array $tvsArray)
+    function parseTvValues(string $param, array $tvsArray): array | string
     {
-        if (strpos($param, '[*') === false) {
+        if (!str_contains($param, '[*')) {
             return $param;
         }
 
         $modx = evo();
-        if (is_array($modx->documentObject)) {
-            $tvsArray = array_merge($tvsArray, $modx->documentObject);
-        }
+        $tvsArray = array_merge($tvsArray, $modx->documentObject);
         $matches = $modx->getTagsFromContent($param, '[*', '*]');
         foreach ($matches[0] as $i => $match) {
             if (!isset($tvsArray[$matches[1][$i]])) {
@@ -412,7 +410,7 @@ if (!function_exists('getTVDisplayFormat')) {
      * @param string $format
      * @param string $paramstring
      * @param string $tvtype
-     * @param string|int $docid
+     * @param string|int $docId
      * @param string $sep
      *
      * @return mixed|string
@@ -423,18 +421,18 @@ if (!function_exists('getTVDisplayFormat')) {
         string $format,
         string $paramstring = '',
         string $tvtype = '',
-        string|int $docid = '',
+        string|int $docId = '',
         string $sep = '')
     {
         $modx = evo();
         $o = '';
 
         // process any TV commands in value
-        $docid = (int) $docid;
-        if (!$docid) {
-            $docid = $modx->documentIdentifier;
+        $docId = (int) $docId;
+        if (!$docId) {
+            $docId = $modx->documentIdentifier;
         }
-        $value = ProcessTVCommand($value, $name, $docid);
+        $value = ProcessTVCommand($value, $name, $docId);
 
         $params = [];
         if ($paramstring) {
@@ -464,7 +462,7 @@ if (!function_exists('getTVDisplayFormat')) {
                         $attr = [
                             'class' => $params['class'],
                             'src' => $src,
-                            'id' => ($params['id'] ? $params['id'] : ''),
+                            'id' => ($params['id'] ?: ''),
                             'alt' => $modx->getPhpCompat()->htmlspecialchars($params['alttext']),
                             'style' => $params['style'],
                         ];
@@ -724,14 +722,14 @@ if (!function_exists('getTVDisplayFormat')) {
             case 'custom_widget':
                 $widget_output = '';
                 /* If we are loading a file */
-                if (strpos($params['output'], '@FILE') === 0) {
+                if (str_starts_with($params['output'], '@FILE')) {
                     $file_name = MODX_BASE_PATH . trim(substr($params['output'], 6));
                     if (!is_file($file_name)) {
                         $widget_output = $file_name . ' does not exist';
                     } else {
                         $widget_output = file_get_contents($file_name);
                     }
-                } elseif (strpos($params['output'], '@INCLUDE') === 0) {
+                } elseif (str_starts_with($params['output'], '@INCLUDE')) {
                     $file_name = MODX_BASE_PATH . trim(substr($params['output'], 9));
                     if (!is_file($file_name)) {
                         $widget_output = $file_name . ' does not exist';
@@ -740,10 +738,10 @@ if (!function_exists('getTVDisplayFormat')) {
                         include $file_name;
                     }
                 } elseif ($value !== '') {
-                    if (strpos($params['output'], '@CHUNK') === 0) {
+                    if (str_starts_with($params['output'], '@CHUNK')) {
                         $chunk_name = trim(substr($params['output'], 7));
                         $widget_output = $modx->getChunk($chunk_name);
-                    } elseif (strpos($params['output'], '@EVAL') === 0) {
+                    } elseif (str_starts_with($params['output'], '@EVAL')) {
                         $eval_str = trim(substr($params['output'], 6));
                         $widget_output = eval($eval_str);
                     } else {
@@ -801,7 +799,7 @@ if (!function_exists('parseInput')) {
      *
      * @return array|string
      */
-    function parseInput($src, string $delim = '||', string $type = 'string', bool $columns = true)
+    function parseInput($src, string $delim = '||', string $type = 'string', bool $columns = true): array | string
     { // type can be: string, array
         $modx = evo();
         if ($modx->getDatabase()->isResult($src)) {
@@ -829,14 +827,14 @@ if (!function_exists('getUnixtimeFromDateString')) {
      *
      * @return bool|false|int
      */
-    function getUnixtimeFromDateString(string $value)
+    function getUnixtimeFromDateString(string $value): bool | int
     {
         $timestamp = false;
         // Check for MySQL or legacy style date
         $date_match_1 = '/^([0-9]{2})-([0-9]{2})-([0-9]{4})\ ([0-9]{2}):([0-9]{2}):([0-9]{2})$/';
         $date_match_2 = '/^([0-9]{4})-([0-9]{2})-([0-9]{2})\ ([0-9]{2}):([0-9]{2}):([0-9]{2})$/';
         $matches = [];
-        if (strpos($value, '-') !== false) {
+        if (str_contains($value, '-')) {
             if (preg_match($date_match_1, $value, $matches)) {
                 $timestamp = mktime($matches[4], $matches[5], $matches[6], $matches[2], $matches[1], $matches[3]);
             } elseif (preg_match($date_match_2, $value, $matches)) {
@@ -883,7 +881,7 @@ if (!function_exists('renderFormElement')) {
         if ($content === null) {
             global $content;
         }
-        if (substr($default_text, 0, 6) === '@@EVAL' && $field_value === $default_text) {
+        if (str_starts_with($default_text, '@@EVAL') && $field_value === $default_text) {
             $eval_str = trim(substr($default_text, 7));
             $default_text = eval($eval_str);
             $field_value = $default_text;
@@ -1046,7 +1044,7 @@ if (!function_exists('renderFormElement')) {
                         '<table border="0" cellspacing="0" cellpadding="0"><tr><td><select id="tv' . $field_id .
                         '_prefix" name="tv' . $field_id . '_prefix" onchange="documentDirty=true;">';
                     foreach ($urls as $k => $v) {
-                        if (strpos($field_value, $v) === false) {
+                        if (!str_contains($field_value, $v)) {
                             $field_html .= '<option value="' . $v . '">' . $k . '</option>';
                         } else {
                             $field_value = str_replace($v, '', $field_value);
@@ -1076,13 +1074,13 @@ if (!function_exists('renderFormElement')) {
                     $tpl =
                         '<label class="checkbox"><input type="checkbox" value="%s" id="tv_%s" name="tv%s[]" %s onchange="documentDirty=true;" />%s</label><br />';
                     $_ = [];
-                    foreach ($index_list as $c => $item) {
+                    foreach ($index_list as $item) {
                         if (is_array($item)) {
                             $name = trim($item[0]);
-                            $value = isset($item[1]) ? $item[1] : $name;
+                            $value = $item[1] ?? $name;
                         } else {
                             $item = trim($item);
-                            if (strpos($item, '==') !== false) {
+                            if (str_contains($item, '==')) {
                                 [$name, $value] = array_merge(explode('==', $item, 2), ['']);
                             } else {
                                 [$name, $value] = [$item, $item];
@@ -1161,14 +1159,14 @@ if (!function_exists('renderFormElement')) {
                 case 'custom_tv':
                     $custom_output = '';
                     /* If we are loading a file */
-                    if (strpos($field_elements, '@FILE') === 0) {
+                    if (str_starts_with($field_elements, '@FILE')) {
                         $file_name = MODX_BASE_PATH . trim(substr($field_elements, 6));
                         if (!file_exists($file_name)) {
                             $custom_output = $file_name . ' does not exist';
                         } else {
                             $custom_output = file_get_contents($file_name);
                         }
-                    } elseif (strpos($field_elements, '@INCLUDE') === 0) {
+                    } elseif (str_starts_with($field_elements, '@INCLUDE')) {
                         $file_name = MODX_BASE_PATH . trim(substr($field_elements, 9));
                         if (!file_exists($file_name)) {
                             $custom_output = $file_name . ' does not exist';
@@ -1177,7 +1175,7 @@ if (!function_exists('renderFormElement')) {
                             include $file_name;
                             $custom_output = ob_get_clean();
                         }
-                    } elseif (strpos($field_elements, '@CHUNK') === 0) {
+                    } elseif (str_starts_with($field_elements, '@CHUNK')) {
                         $chunk_name = trim(substr($field_elements, 7));
                         $chunk_body = $modx->getChunk($chunk_name);
                         if ($chunk_body == false) {
@@ -1186,7 +1184,7 @@ if (!function_exists('renderFormElement')) {
                         } else {
                             $custom_output = $chunk_body;
                         }
-                    } elseif (strpos($field_elements, '@EVAL') === 0) {
+                    } elseif (str_starts_with($field_elements, '@EVAL')) {
                         $eval_str = trim(substr($field_elements, 6));
                         $custom_output = eval($eval_str);
                     } else {

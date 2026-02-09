@@ -392,7 +392,7 @@ class Evo
                         ->where('alias', $this->documentIdentifier)
                         ->first();
 
-                    if (is_null($doc)) {
+                    if (!$doc) {
                         $hidden = Cache::rememberForever('hidden_aliases', function () {
                             return SiteContent::query()
                                 ->select('id', 'parent')
@@ -420,7 +420,7 @@ class Evo
                             }
                         }
 
-                        if (is_null($doc) || !$found) {
+                        if (!$doc || !$found) {
                             return $this->sendErrorPage();
                         }
                     }
@@ -438,7 +438,7 @@ class Evo
                         ->where('alias', $this->documentIdentifier)
                         ->first();
 
-                    if (is_null($doc)) {
+                    if (!$doc) {
                         return $this->sendErrorPage();
                     }
 
