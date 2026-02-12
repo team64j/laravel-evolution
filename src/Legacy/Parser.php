@@ -20,37 +20,39 @@ class Parser
      * @var DocumentParser $core
      * @access protected
      */
-    protected $core;
+    protected DocumentParser $core;
 
     /**
      * @var Parser cached reference to singleton instance
      */
-    protected static $instance;
+    protected static Parser $instance;
 
-    protected $templatePath = 'views/';
+    protected string $templatePath = 'views/';
 
-    protected $templateExtension = 'html';
+    protected string $templateExtension = 'html';
 
     /**
-     * @var Factory
+     * @var Factory|null
      */
-    public $blade;
+    public ?Factory $blade = null;
 
-    protected $bladeEnabled = true;
+    protected bool $bladeEnabled = true;
 
-    protected $templateData = [];
+    protected array $templateData = [];
 
     public $phx;
 
     /**
      * gets the instance via lazy initialization (created on first usage)
      *
+     * @param $core
+     *
      * @return self
      */
-    public static function getInstance($modx)
+    public static function getInstance($core): Parser
     {
         if (null === self::$instance) {
-            self::$instance = new self($modx);
+            self::$instance = new self($core);
         }
 
         return self::$instance;
@@ -60,9 +62,9 @@ class Parser
      * is not allowed to call from outside: private!
      *
      */
-    public function __construct()
+    public function __construct($core = null)
     {
-        $this->core = evo();
+        $this->core = $core ?? evo();
         $this->loadBlade();
     }
 
@@ -87,7 +89,7 @@ class Parser
     /**
      * @return string
      */
-    public function getTemplatePath()
+    public function getTemplatePath(): string
     {
         return $this->templatePath;
     }
@@ -100,9 +102,9 @@ class Parser
      *
      * @return $this
      */
-    public function setTemplatePath($path, $supRoot = false)
+    public function setTemplatePath(string $path, bool $supRoot = false): static
     {
-        $path = trim($path ?? '');
+        $path = trim($path);
         if ($supRoot === false) {
             $path = $this->cleanPath($path);
         }
@@ -124,12 +126,12 @@ class Parser
      *
      * @return string
      */
-    protected function cleanPath($path)
+    protected function cleanPath(string $path): string
     {
         return preg_replace(['/\.*[\/|\\\]/i', '/[\/|\\\]+/i'], ['/', '/'], $path);
     }
 
-    public function getTemplateExtension()
+    public function getTemplateExtension(): string
     {
         return $this->templateExtension;
     }
@@ -141,7 +143,7 @@ class Parser
      *
      * @return $this
      */
-    public function setTemplateExtension($ext)
+    public function setTemplateExtension($ext): static
     {
         $ext = $this->cleanPath(trim($ext ?? '', ". \t\n\r\0\x0B"));
 
@@ -159,7 +161,7 @@ class Parser
      *
      * @return $this
      */
-    public function setTemplateData($data = [])
+    public function setTemplateData(array $data = []): static
     {
         if (is_array($data)) {
             $this->templateData = $data;
@@ -173,7 +175,7 @@ class Parser
      *
      * @return array
      */
-    public function getTemplateData($data = [])
+    public function getTemplateData(array $data = []): array
     {
         $plh = array_merge($this->core->getDataForView(), $this->templateData);
         $plh['data'] = $data;
@@ -192,7 +194,7 @@ class Parser
      *
      * @return string
      */
-    public function toPlaceholders($data, $set = 0, $key = 'contentPlaceholder', $prefix = '')
+    public function toPlaceholders($data, int $set = 0, string $key = 'contentPlaceholder', string $prefix = ''): string
     {
         $out = '';
         if ($set != 0) {
@@ -209,9 +211,9 @@ class Parser
      *
      * @param string $name Template: chunk name || @CODE: template || @FILE: file with template
      *
-     * @return string html template with placeholders without data
+     * @return string|null html template with placeholders without data
      */
-    public function getChunk($name)
+    public function getChunk(string $name): ?string
     {
         $tpl = '';
         $ext = null;
@@ -293,7 +295,7 @@ class Parser
                     }
                     break;
                 case '@RENDERPAGE':
-                    $tpl = $this->renderDoc($subTmp, false);
+                    $tpl = $this->renderDoc($subTmp);
                     break;
                 case '@LOADPAGE':
                     $tpl = $this->renderDoc($subTmp, true);
@@ -328,7 +330,6 @@ class Parser
         if (array_key_exists($name, $this->core->chunkCache)) {
             $tpl = $this->core->chunkCache[$name];
         } else {
-            /** @var Collection $chunk */
             $chunk = SiteHtmlsnippet::query()
                 ->where('name', $name)
                 ->where('disabled', 0)
@@ -346,7 +347,7 @@ class Parser
      *
      * @param int $id ID документа
      * @param bool $events Во время рендера документа стоит ли вызывать события OnLoadWebDocument и OnLoadDocumentObject (внутри метода getDocumentObject).
-     * @param mixed $tpl Шаблон с которым необходимо отрендерить документ. Возможные значения:
+     * @param mixed|null $tpl Шаблон с которым необходимо отрендерить документ. Возможные значения:
      *                       null - Использовать шаблон который назначен документу
      *                       int(0-n) - Получить шаблон из базы данных с указанным ID и применить его к документу
      *                       string - Применить шаблон указанный в строке к документу
@@ -357,16 +358,15 @@ class Parser
      *       - с источиком от куда произошел вызов события
      *       - оригинальный экземпляр класса Core
      */
-    public function renderDoc($id, $events = false, $tpl = null)
+    public function renderDoc(int $id, bool $events = false, mixed $tpl = null)
     {
-        $id = (int) $id;
         if ($id <= 0) {
             return '';
         }
 
         $m = clone $this->core; //Чтобы была возможность вызывать события
         $m->documentIdentifier = $id;
-        $m->documentObject = $m->getDocumentObject('id', (int) $id, $events ? 'prepareResponse' : null);
+        $m->documentObject = $m->getDocumentObject('id', $id, $events ? 'prepareResponse' : null);
         if ($m->documentObject['type'] === 'reference') {
             if (is_numeric($m->documentObject['content']) && $m->documentObject['content'] > 0) {
                 $m->documentObject['content'] = $this->renderDoc($m->documentObject['content'], $events);
@@ -396,18 +396,16 @@ class Parser
     /**
      * Получить содержимое шаблона с определенным номером
      *
-     * @param int|string $id Номер шаблона
+     * @param int $id Номер шаблона
      *
      * @return string|null HTML код шаблона
      */
-    public function getTemplate(int|string $id): ?string
+    public function getTemplate(int $id): ?string
     {
         $tpl = null;
 
-        $id = (int) $id;
-
         if ($id > 0) {
-            $tpl = \EvolutionCMS\Models\SiteTemplate::query()->find($id)->content;
+            $tpl = SiteTemplate::query()->find($id)->content;
         }
 
         if ($tpl === null) {
@@ -426,10 +424,10 @@ class Parser
      *
      * @return string html template with data without placeholders
      */
-    public function parseChunk($name, $data = [], $parseDocumentSource = false, $disablePHx = false)
+    public function parseChunk($name, array $data = [], bool $parseDocumentSource = false, $disablePHx = false)
     {
         $out = $this->getChunk($name);
-        $blade = strpos($name, '@B_') === 0 && $this->bladeEnabled;
+        $blade = str_starts_with($name, '@B_') && $this->bladeEnabled;
         switch (true) {
             case $blade:
                 if (!empty($out)) {

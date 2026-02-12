@@ -20,7 +20,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function loadSnippetsFrom($path, string $namespace = ''): void
     {
-        $found = app('evo')->findElements('snippet', $path, array('php'));
+        $found = app('evo')->findElements('snippet', $path, ['php']);
         foreach ($found as $name => $code) {
             $this->addSnippet($name, $code, $namespace);
         }
@@ -36,7 +36,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function loadChunksFrom($path, string $namespace = ''): void
     {
-        $found = app('evo')->findElements('chunk', $path, array('tpl', 'html'));
+        $found = app('evo')->findElements('chunk', $path, ['tpl', 'html']);
         foreach ($found as $name => $code) {
             $this->addChunk($name, $code, $namespace);
         }

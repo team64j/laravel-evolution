@@ -12,6 +12,8 @@ use EvolutionCMS\Models\SitePlugin;
 use EvolutionCMS\Models\SiteSnippet;
 use EvolutionCMS\Models\SiteTemplate;
 use EvolutionCMS\Models\SiteTmplvar;
+use EvolutionCMS\Models\SiteTmplvarContentvalue;
+use EvolutionCMS\Models\SiteTmplvarTemplate;
 use EvolutionCMS\Models\User;
 use Exception;
 use FilesystemIterator;
@@ -38,7 +40,7 @@ class Evo
     }
 
     public Event $event;
-    public int|string $documentIdentifier = 0;
+    public int | string $documentIdentifier = 0;
     public string $documentOutput;
     public string $documentContent;
     public array $documentObject;
@@ -574,8 +576,8 @@ class Evo
         string $url,
         int $count_attempts = 0,
         string $type = 'REDIRECT_HEADER',
-        string $responseCode = '')
-    {
+        string $responseCode = ''
+    ) {
         if (!$url) {
             return false;
         }
@@ -589,9 +591,11 @@ class Evo
             $currentNumberOfRedirects = $_GET['err'] ?? 0;
             if ($currentNumberOfRedirects > 3) {
                 $this->getService('ExceptionHandler')->messageQuit(
-                    "Redirection attempt failed - please ensure the document you're trying to redirect to exists. <p>Redirection URL: <i>" .
+                    "Redirection attempt failed - please ensure the document you're trying to redirect to exists. <p>Redirection URL: <i>"
+                    .
                     $url . '</i></p>'
                 );
+
                 return;
             }
             $url .= (Str::contains($url, '?') ? '&' : '?') . 'err=' . ($currentNumberOfRedirects + 1);
@@ -599,6 +603,7 @@ class Evo
 
         if ($type === 'REDIRECT_REFRESH') {
             header('Refresh: 0;URL=' . $url);
+
             return;
         }
 
@@ -745,12 +750,11 @@ class Evo
         $result_pub = SiteContent::query()->select('id')->whereRaw($where)->get();
         SiteContent::query()->whereRaw($where)->update($field);
 
-        if ($result_pub->count() >= 1) { //Event unPublished doc
-            foreach ($result_pub as $row_pub) {
-                $this->invokeEvent("OnDocUnPublished", [
-                    "docid" => $row_pub->id,
-                ]);
-            }
+        //Event unPublished doc
+        foreach ($result_pub as $row_pub) {
+            $this->invokeEvent('OnDocUnPublished', [
+                'docid' => $row_pub->getKey(),
+            ]);
         }
 
         // now, check for documents that need un-publishing
@@ -761,12 +765,11 @@ class Evo
 
         SiteContent::query()->whereRaw($where)->update($field);
 
-        if ($result_unpub->count() >= 1) { //Event unPublished doc
-            foreach ($result_unpub as $row_unpub) {
-                $this->invokeEvent("OnDocUnPublished", [
-                    "docid" => $row_unpub->id,
-                ]);
-            }
+        //Event unPublished doc
+        foreach ($result_unpub as $row_unpub) {
+            $this->invokeEvent('OnDocUnPublished', [
+                'docid' => $row_unpub->getKey(),
+            ]);
         }
 
         $this->recentUpdate = $timeNow;
@@ -788,7 +791,7 @@ class Evo
      *
      * @return array|false
      */
-    public function invokeEvent(string $evtName, array $extParams = []): bool|array
+    public function invokeEvent(string $evtName, array $extParams = []): bool | array
     {
         if ($this->isSafemode()) {
             return false;
@@ -945,12 +948,12 @@ class Evo
 
     /**
      * @param $propertyString
-     * @param $elementName
-     * @param $elementType
+     * @param string|null $elementName
+     * @param string|null $elementType
      *
      * @return array
      */
-    public function parseProperties($propertyString, $elementName = null, $elementType = null): array
+    public function parseProperties($propertyString, ?string $elementName = null, ?string $elementType = null): array
     {
         $property = [];
 
@@ -1009,8 +1012,8 @@ class Evo
         if (!empty($elementName) && !empty($elementType)) {
             $out = $this->invokeEvent('OnParseProperties', [
                 'element' => $elementName,
-                'type' => $elementType,
-                'args' => $property,
+                'type'    => $elementType,
+                'args'    => $property,
             ]);
             if (is_array($out)) {
                 $out = array_pop($out);
@@ -1060,8 +1063,10 @@ class Evo
         /*if(is_file($lock_file_path)) unlink($lock_file_path);*/
         $error_info = error_get_last();
 
-        if ((0 < $this->getConfig('error_reporting')) && $msg && $error_info !== null &&
-            $this->detectError($error_info['type'])
+        if ((0 < $this->getConfig('error_reporting')) && $msg && $error_info !== null
+            && $this->detectError(
+                $error_info['type']
+            )
         ) {
             $msg = $msg === false ? 'ob_get_contents() error' : $msg;
             $this->getService('ExceptionHandler')->messageQuit(
@@ -1125,19 +1130,19 @@ class Evo
     }
 
     /**
-     * @param string $type
+     * @param array|int|string $type
      * @param bool $report
      *
      * @return void
      */
-    public function clearCache(string $type = '', bool $report = false): void
+    public function clearCache(array | int | string $type = '', bool $report = false): void
     {
-        $cache_dir = app()->bootstrapPath();
-        $path = $this['config']['view.compiled'];
+        $cache_dir = $this->getSiteCachePath();
+        $path = $this->getConfig('view.compiled');
 
         if ($path) {
-            foreach ($this['files']->glob("$path/*") as $view) {
-                $this['files']->delete($view);
+            foreach (glob("$path/*") as $view) {
+                unlink($view);
             }
         }
 
@@ -1150,12 +1155,9 @@ class Evo
             $sync->setCachePath($cache_dir);
             $sync->setReport($report);
             $sync->emptyCache();
-        } elseif (preg_match('@^[1-9]\d*$@', $type)) {
-            $key = ($this->getConfig('cache_type') == 2) ? $this->makePageCacheKey($type) : $type;
-            $file_name = "docid_" . $key . "_*.pageCache.php";
-            $cache_path = $cache_dir . $file_name;
-            $files = (array) (glob($cache_path) ?: []);
-            $files[] = $cache_dir . "docid_" . $key . ".pageCache.php";
+        } elseif (preg_match('@^[1-9]\d*$@', (string) $type)) {
+            Cache::forget('documentObject' . $type);
+            $files = (array) (glob($this->getHashFile($type . '*')) ?: []);
             foreach ($files as $file) {
                 if (!is_file($file)) {
                     continue;
@@ -1195,7 +1197,7 @@ class Evo
                 $hash .= '_' . md5(http_build_query($params));
             }
         }
-        $evtOut = $this->invokeEvent("OnMakePageCacheKey", ["hash" => &$hash, "id" => $id, 'params' => $params]);
+        $evtOut = $this->invokeEvent('OnMakePageCacheKey', ['hash' => &$hash, 'id' => $id, 'params' => $params]);
         if (is_array($evtOut) && count($evtOut) > 0) {
             $tmp = array_pop($evtOut);
         }
@@ -1224,31 +1226,21 @@ class Evo
     /**
      * @param string $method
      *
-     * @return bool|float|int|mixed|string|void|null
+     * @return int|string
      */
-    public function getDocumentIdentifier(string $method)
+    public function getDocumentIdentifier(string $method): int | string
     {
+        if (str_starts_with($_SERVER['REQUEST_URI'], '/index.php')) {
+            echo $this->sendErrorPage();
+            exit;
+        }
+
         // function to test the query and find the retrieval method
         if ($method === 'alias') {
             return Request::getPathInfo();
         }
 
-        $id = Request::input('id');
-        if ($id) {
-            if (!preg_match('/^[1-9]\d*$/', $id)) {
-                $this->sendErrorPage();
-                exit;
-            }
-
-            return $id;
-        }
-
-        if (Str::contains($_SERVER['REQUEST_URI'], 'index.php/')) {
-            $this->sendErrorPage();
-            exit;
-        }
-
-        return $this->getConfig('site_start');
+        return Request::integer('id', (int) $this->getConfig('site_start'));
     }
 
     /**
@@ -1269,12 +1261,12 @@ class Evo
     }
 
     /**
-     * @param $id
+     * @param int $id
      * @param string $responseCode
      *
      * @return string
      */
-    public function sendForward($id, string $responseCode = ''): string
+    public function sendForward(int $id, string $responseCode = ''): string
     {
         if ($this->forwards <= 0) {
             $this->getService('ExceptionHandler')->messageQuit("Internal Server Error id=$id");
@@ -1303,17 +1295,17 @@ class Evo
         }
 
         $this->documentContent = '';
+
         if ($this->getConfig('enable_cache')) {
             $this->documentContent = $this->getDocumentContentFromCache($this->documentIdentifier, true);
+            // get document object from DB
+            $this->documentObject =
+                $this->getDocumentObjectFromCache($this->documentMethod, $this->documentIdentifier, 'prepareResponse');
         }
 
         $this->documentGenerated = 0;
         $template = false;
         if ($this->documentContent == '') {
-            // get document object from DB
-            $this->documentObject =
-                $this->getDocumentObjectFromCache($this->documentMethod, $this->documentIdentifier, 'prepareResponse');
-
             // write the documentName to the object
             $this->documentName = &$this->documentObject['pagetitle'];
 
@@ -1322,9 +1314,9 @@ class Evo
                 $this->setConfig('track_visitors', 0);
             }
 
-            if ($this->documentObject['deleted'] == 1) {
+            if ($this->documentObject['deleted']) {
                 return $this->sendErrorPage();
-            } elseif ($this->documentObject['published'] == 0) { // validation routines
+            } elseif (!$this->documentObject['published']) { // validation routines
                 return $this->_sendErrorForUnpubPage();
             } elseif ($this->documentObject['type'] === 'reference') {
                 return (string) $this->_sendRedirectForRefPage($this->documentObject['content']);
@@ -1336,13 +1328,13 @@ class Evo
                 $this->documentObject['cacheable'] = 0;
                 if (isset($this->documentObject['id'])) {
                     $data = [
-                        'modx' => $this,
+                        'modx'           => $this,
                         'documentObject' => $this->makeDocumentObject($this->documentObject['id']),
                     ];
                 } else {
                     $data = [
-                        'modx' => $this,
-                        'documentObject' => [],
+                        'modx'              => $this,
+                        'documentObject'    => [],
                         'siteContentObject' => [],
                     ];
                 }
@@ -1414,15 +1406,16 @@ class Evo
             $this->cacheKey = (string) $key;
         }
 
-        $cache_path = $this->getHashFile($key);
+        $content = file_exists($this->getHashFile($key)) ? file_get_contents($this->getHashFile($key)) : null;
 
-        if (!Cache::has($cache_path)) {
+        if (!$content) {
             $this->documentGenerated = 1;
 
             return '';
         }
 
-        $content = Cache::get($cache_path);
+        $this->documentObject = [];
+
         if (str_starts_with($content, '<?php')) {
             $content = substr($content, strpos($content, '?>') + 2);
         } // remove php header
@@ -1556,10 +1549,8 @@ class Evo
     public function getDocumentObjectFromCache($method, $identifier, ?string $isPrepareResponse = null): array
     {
         return Cache::rememberForever(
-            __FUNCTION__ . $identifier,
-            function () use ($method, $identifier, $isPrepareResponse) {
-                return $this->getDocumentObject($method, $identifier, $isPrepareResponse);
-            }
+            'documentObject' . $identifier,
+            fn() => $this->getDocumentObject($method, $identifier, $isPrepareResponse)
         );
     }
 
@@ -1584,8 +1575,11 @@ class Evo
             $method = $this->documentMethod;
         }
 
-        if ($method === 'alias' && $this->getConfig('use_alias_path') &&
-            array_key_exists($identifier, app('evo.url')->documentListing)
+        if ($method === 'alias' && $this->getConfig('use_alias_path')
+            && array_key_exists(
+                $identifier,
+                app('evo.url')->documentListing
+            )
         ) {
             $method = 'id';
             $identifier = app('evo.url')->documentListing[$identifier];
@@ -1601,23 +1595,23 @@ class Evo
         } else {
             // get document
             $documentObject = SiteContent::withoutProtected()
-                ->where('site_content.' . $method, $identifier);
-            $documentObject = $documentObject->first();
+                ->select((new SiteContent)->qualifyColumn('*'))
+                ->firstWhere((new SiteContent)->qualifyColumn($method), $identifier);
+
             if (is_null($documentObject)) {
                 if ($this->getConfig('unauthorized_page')) {
                     // method may still be alias, while identifier is not full path alias, e.g. id not found above
                     if ($method === 'alias') {
-                        $seclimit = DocumentGroup::query()
-                            ->join('site_content')
-                            ->where('document_groups.document', 'sc.id')
-                            ->where('site_content.alias', DB::Raw($identifier))
+                        $accessible = SiteContent::query()
+                            ->whereHas('documentGroups')
+                            ->where('alias', DB::Raw($identifier))
                             ->exists();
                     } else {
-                        $seclimit = DocumentGroup::query()
+                        $accessible = DocumentGroup::query()
                             ->where('document', DB::Raw($identifier))
                             ->exists();
                     }
-                    if ($seclimit) {
+                    if ($accessible) {
                         // match found but not publicly accessible, send the visitor to the unauthorized_page
                         $this->sendUnauthorizedPage();
                     } else {
@@ -1627,8 +1621,6 @@ class Evo
             }
             //this is now the document :)
             $documentObject = $documentObject->toArray();
-            unset($documentObject['document_group'], $documentObject['document']);
-            $documentObject['id'] = $identifier;
 
             if ($isPrepareResponse === 'prepareResponse') {
                 $this->documentObject = &$documentObject;
@@ -1644,15 +1636,17 @@ class Evo
             }
 
             if ($documentObject['template']) {
-                // load TVs and merge with document - Orig by Apodigm - Docvars
+                $modelTv = new SiteTmplvar();
+                $modelTvs = new SiteTmplvarContentvalue();
+                $modelTpl = new SiteTmplvarTemplate();
+
                 $tvs = SiteTmplvar::query()
-                    ->select('site_tmplvars.*', 'site_tmplvar_contentvalues.value')
-                    ->join('site_tmplvar_templates', 'site_tmplvar_templates.tmplvarid', '=', 'site_tmplvars.id')
-                    ->leftJoin('site_tmplvar_contentvalues', function ($join) use ($documentObject) {
-                        $join->on('site_tmplvar_contentvalues.tmplvarid', '=', 'site_tmplvars.id');
-                        $join->on('site_tmplvar_contentvalues.contentid', '=', DB::raw((int) $documentObject['id']));
-                    })
-                    ->where('site_tmplvar_templates.templateid', $documentObject['template'])
+                    ->select($modelTv->qualifyColumn('*'), $modelTvs->qualifyColumn('value'))
+                    ->join($modelTpl->getTable(), $modelTpl->qualifyColumn('tmplvarid'), $modelTv->qualifyColumn('id'))
+                    ->leftJoin($modelTvs->getTable(), fn($join) => $join
+                        ->on($modelTvs->qualifyColumn('tmplvarid'), $modelTv->qualifyColumn('id'))
+                        ->where($modelTvs->qualifyColumn('contentid'), (int) $documentObject['id']))
+                    ->where($modelTpl->qualifyColumn('templateid'), $documentObject['template'])
                     ->get();
 
                 $tmplvars = [];
@@ -1686,6 +1680,7 @@ class Evo
                 $documentObject = $out[0];
             }
         }
+
         $this->tmpCache[__FUNCTION__][$cacheKey] = $documentObject;
 
         return $documentObject;
@@ -1696,7 +1691,7 @@ class Evo
      *
      * @return int|string
      */
-    public function cleanDocumentIdentifier($qOrig): int|string
+    public function cleanDocumentIdentifier($qOrig): int | string
     {
         return app('evo.url')->cleanDocumentIdentifier($qOrig, $this->documentMethod);
     }
@@ -1821,8 +1816,11 @@ class Evo
             $processor = get_class($processor);
         }
 
-        return is_scalar($processor) && mb_strtolower($value) === mb_strtolower($processor) &&
-            class_exists($processor, false);
+        return is_scalar($processor) && mb_strtolower($value) === mb_strtolower($processor)
+            && class_exists(
+                $processor,
+                false
+            );
     }
 
     /**
@@ -1938,20 +1936,17 @@ class Evo
     public function ignoreCommentedTagsContent(
         string $content,
         string $left = '<!--@-',
-        string $right = '-@-->'): string
-    {
+        string $right = '-@-->'
+    ): string {
         if (!Str::contains($content, $left)) {
             return $content;
         }
 
         $matches = $this->getTagsFromContent($content, $left, $right);
         if (!empty($matches)) {
-            $addBreakMatches = [];
-            foreach ($matches[0] as $i => $v) {
-                $addBreakMatches[$i] = $v . "\n";
-            }
+            $addBreakMatches = array_map(static fn($v) => $v . PHP_EOL, $matches[0]);
             $content = str_replace($addBreakMatches, '', $content);
-            if (Str::contains($content, $left)) {
+            if (str_contains($content, $left)) {
                 $content = str_replace($matches[0], '', $content);
             }
         }
@@ -2207,11 +2202,11 @@ class Evo
             $ph = array_merge(
                 $this->allConfig(),
                 [
-                    'base_url' => MODX_BASE_URL,
-                    'base_path' => MODX_BASE_PATH,
-                    'site_url' => MODX_SITE_URL,
-                    'valid_hostnames' => MODX_SITE_HOSTNAMES,
-                    'site_manager_url' => MODX_MANAGER_URL,
+                    'base_url'          => MODX_BASE_URL,
+                    'base_path'         => MODX_BASE_PATH,
+                    'site_url'          => MODX_SITE_URL,
+                    'valid_hostnames'   => MODX_SITE_HOSTNAMES,
+                    'site_manager_url'  => MODX_MANAGER_URL,
                     'site_manager_path' => MODX_MANAGER_PATH,
                 ]
             );
@@ -2255,8 +2250,8 @@ class Evo
     public function escapeLiteralTagsContent(
         string $content,
         string $left = '<@LITERAL>',
-        string $right = '<@ENDLITERAL>'): string
-    {
+        string $right = '<@ENDLITERAL>'
+    ): string {
         if (stripos($content, $left) === false) {
             return $content;
         }
@@ -2345,32 +2340,32 @@ class Evo
         }
 
         EventLog::query()->insert([
-            'eventid' => $evtid,
-            'type' => $type,
-            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
-            'source' => $esc_source,
+            'eventid'     => $evtid,
+            'type'        => $type,
+            'createdon'   => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
+            'source'      => $esc_source,
             'description' => $msg,
-            'user' => $LoginUserID,
-            'usertype' => $this->isFrontend() ? 1 : 0,
+            'user'        => $LoginUserID,
+            'usertype'    => $this->isFrontend() ? 1 : 0,
         ]);
 
         $this->invokeEvent('OnLogEvent', [
-            'eventid' => $evtid,
-            'type' => $type,
-            'createdon' => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
-            'source' => $esc_source,
+            'eventid'     => $evtid,
+            'type'        => $type,
+            'createdon'   => $_SERVER['REQUEST_TIME'] + $this->getConfig('server_offset_time'),
+            'source'      => $esc_source,
             'description' => $msg,
-            'user' => $LoginUserID,
-            'usertype' => $this->isFrontend() ? 1 : 0,
+            'user'        => $LoginUserID,
+            'usertype'    => $this->isFrontend() ? 1 : 0,
         ]);
 
         if ($this->getConfig('send_errormail', '0') != '0') {
             if ($this->getConfig('send_errormail') <= $type) {
                 $this->sendmail([
                     'subject' => 'Evolution CMS System Error on ' . $this->getConfig('site_name'),
-                    'body' => 'Source: ' . $source .
+                    'body'    => 'Source: ' . $source .
                         ' - The details of the error could be seen in the Evolution CMS system events log.',
-                    'type' => 'text',
+                    'type'    => 'text',
                 ]);
             }
         }
@@ -2481,7 +2476,7 @@ class Evo
      *
      * @return array|bool
      */
-    public function getUserInfo($uid): bool|array
+    public function getUserInfo($uid): bool | array
     {
         if (isset($this->tmpCache[__FUNCTION__][$uid])) {
             return $this->tmpCache[__FUNCTION__][$uid];
@@ -2745,7 +2740,7 @@ class Evo
      *
      * @return array
      */
-    public function getParentIds(int|string $id, int $height = 10): array
+    public function getParentIds(int | string $id, int $height = 10): array
     {
         $parents = [];
         while ($id && $height--) {
@@ -2854,7 +2849,9 @@ class Evo
             $depth--;
             foreach ($documentMap_cache[$id] as $childId) {
                 if (strlen(app('evo.url')->aliasListing[$childId]['path'])) {
-                    $pkey = "{UrlProcessor::getFacadeRoot()->aliasListing[" . $childId . "]['path']}/" . app('evo.url')->aliasListing[$childId]['alias'];
+                    $pkey = "{UrlProcessor::getFacadeRoot()->aliasListing[" . $childId . "]['path']}/" . app(
+                                                                                                             'evo.url'
+                                                                                                         )->aliasListing[$childId]['alias'];
                 } else {
                     $pkey = app('evo.url')->aliasListing[$childId]['alias'];
                 }
@@ -2888,8 +2885,8 @@ class Evo
         string $sort = 'menuindex',
         string $dir = 'ASC',
         string $fields = 'id, pagetitle, description, parent, alias, menutitle',
-        bool $checkAccess = true): mixed
-    {
+        bool $checkAccess = true
+    ): mixed {
         $cacheKey = md5(print_r(func_get_args(), true));
         if (isset($this->tmpCache[__FUNCTION__][$cacheKey])) {
             return $this->tmpCache[__FUNCTION__][$cacheKey];
@@ -2969,8 +2966,8 @@ class Evo
         array $idnames = [],
         ?int $docid = null,
         int $published = 1,
-        string $sep = ''): bool|array
-    {
+        string $sep = ''
+    ): bool | array {
         if (!$idnames) {
             return false;
         }
@@ -3029,8 +3026,8 @@ class Evo
         int $published = 1,
         string $sort = 'rank',
         string $dir = 'ASC',
-        bool $checkAccess = true): mixed
-    {
+        bool $checkAccess = true
+    ): mixed {
         static $cached = [];
         $cacheKey = md5(print_r(func_get_args(), true));
         if (isset($cached[$cacheKey])) {
@@ -3130,8 +3127,8 @@ class Evo
         string $fields = '*',
         int $published = 1,
         int $deleted = 0,
-        bool $checkAccess = true): mixed
-    {
+        bool $checkAccess = true
+    ): mixed {
         if ($id == 0) {
             return false;
         }
@@ -3325,7 +3322,7 @@ class Evo
      *
      * @return bool|int
      */
-    public function _getSplitPosition($str): bool|int
+    public function _getSplitPosition($str): bool | int
     {
         $closeOpt = false;
         $maybePos = false;
@@ -3580,13 +3577,15 @@ class Evo
         $key = str_replace(['(', ')'], ["['", "']"], $key);
         $key = rtrim($key, ';');
         if (Str::contains($key, '$_SESSION')) {
-            $_ = $_SESSION;
+            $_ = session()->all();
             $key = str_replace('$_SESSION', '$_', $key);
-            if (isset($_['mgrFormValues'])) {
-                unset($_['mgrFormValues']);
+
+            if (session()->has('mgrFormValues')) {
+                session()->delete('mgrFormValues');
             }
-            if (isset($_['token'])) {
-                unset($_['token']);
+
+            if (session()->has('token')) {
+                session()->delete('token');
             }
         }
         if (Str::contains($key, '[')) {
@@ -3608,7 +3607,7 @@ class Evo
      *
      * @return string|array|null
      */
-    private function _get_snip_result($piece): string|array|null
+    private function _get_snip_result($piece): string | array | null
     {
         if (ltrim($piece) !== $piece) {
             return '';
@@ -3738,7 +3737,7 @@ class Evo
      *
      * @return array|string
      */
-    public function evalSnippet(string $phpcode, array $params): array|string
+    public function evalSnippet(string $phpcode, array $params): array | string
     {
         $modx = &$this;
         /*
@@ -3769,8 +3768,7 @@ class Evo
         }
         $echo = ob_get_clean();
         $error_info = error_get_last();
-        if ((0 < $this->getConfig('error_reporting')) && $error_info !== null &&
-            $this->detectError($error_info['type'])
+        if ((0 < $this->getConfig('error_reporting')) && $error_info !== null && $this->detectError($error_info['type'])
         ) {
             $echo = ($echo === false) ? 'ob_get_contents() error' : $echo;
             $this->getService('ExceptionHandler')->messageQuit(
@@ -3807,8 +3805,12 @@ class Evo
      *
      * @return array|mixed|string
      */
-    public function runSnippet($snippetName, array $params = [], ?int $cacheTime = null, ?string $cacheKey = null): mixed
-    {
+    public function runSnippet(
+        $snippetName,
+        array $params = [],
+        ?int $cacheTime = null,
+        ?string $cacheKey = null
+    ): mixed {
         $arrPlaceholderCheck = [];
 
         if (is_numeric($cacheTime) && $this->getConfig('enable_cache')) {
@@ -4033,8 +4035,8 @@ class Evo
         string $chunkName,
         array $chunkArr = [],
         string $prefix = '{',
-        string $suffix = '}'): mixed
-    {
+        string $suffix = '}'
+    ): mixed {
         return $prefix === '[+' && $suffix === '+]' && $this->isChunkProcessor('DLTemplate')
             ?
             app('evo.tpl')->parseChunk($chunkName, $chunkArr)
@@ -4102,7 +4104,7 @@ class Evo
      *
      * @return false|string
      */
-    public function getExtFromFilename($str): bool|string
+    public function getExtFromFilename($str): bool | string
     {
         $str = strtolower(trim($str));
         $pos = strrpos($str, '.');
@@ -4127,8 +4129,8 @@ class Evo
         array $ph = [],
         string $left = '[+',
         string $right = '+]',
-        bool $execModifier = true): string
-    {
+        bool $execModifier = true
+    ): string {
         if (empty($ph) || empty($tpl)) {
             return $tpl;
         }
@@ -4182,7 +4184,14 @@ class Evo
      */
     public function outputContent(bool $noEvent = false, bool $postParse = true): string
     {
-        $this->documentOutput = $this->documentContent;
+        $hashFile = $this->getHashFile($this->makePageCacheKey($this->documentIdentifier));
+
+        if (file_exists($hashFile)) {
+            $this->documentOutput = file_get_contents($hashFile);
+        } else {
+            $this->documentOutput = $this->documentContent;
+            file_put_contents($hashFile, $this->documentContent);
+        }
 
         if ($this->documentGenerated == 1
             && $this->documentObject['cacheable'] == 1
@@ -4228,7 +4237,7 @@ class Evo
         }
 
         // send out content-type and content-disposition headers
-        if (IN_PARSER_MODE == "true") {
+        if (IN_PARSER_MODE == 'true') {
             $type = !empty($this->documentObject['contentType']) ? $this->documentObject['contentType'] : "text/html";
             header('Content-Type: ' . $type . '; charset=' . $this->getConfig('modx_charset'));
             // if (($this->documentIdentifier == $this->config['error_page']) || $redirect_error)
@@ -4254,7 +4263,7 @@ class Evo
         }
         $this->setConditional();
 
-        $stats = $this->getTimerStats($this->tstart);
+        $stats = $this->getTimerStats(LARAVEL_START);
 
         if ($postParse && Str::contains($this->documentOutput, '[^')) {
             $this->documentOutput = str_replace(
@@ -4398,8 +4407,9 @@ class Evo
      */
     public function setConditional(): void
     {
-        if (!empty($_POST) || (defined('MODX_API_MODE') && MODX_API_MODE) || $this->getLoginUserID('mgr') ||
-            !$this->useConditional || empty($this->recentUpdate)
+        if (!empty($_POST) || (defined('MODX_API_MODE') && MODX_API_MODE) || $this->getLoginUserID('mgr')
+            || !$this->useConditional
+            || empty($this->recentUpdate)
         ) {
             return;
         }
@@ -4473,11 +4483,11 @@ class Evo
     {
         // if the current document was generated, cache it!
         $cacheable = ($this->getConfig('enable_cache') && $this->documentObject['cacheable']) ? 1 : 0;
-        if ($cacheable && $this->documentGenerated && $this->documentObject['type'] == 'document' &&
-            $this->documentObject['published']
+        if ($cacheable && $this->documentGenerated && $this->documentObject['type'] == 'document'
+            && $this->documentObject['published']
         ) {
             // invoke OnBeforeSaveWebPageCache event
-            $this->invokeEvent("OnBeforeSaveWebPageCache");
+            $this->invokeEvent('OnBeforeSaveWebPageCache');
 
             if (!empty($this->cacheKey)) {
                 // get and store document groups inside document object. Document groups will be used to check security on cache pages
@@ -4552,11 +4562,14 @@ class Evo
             /** @var SplFileInfo $item */
             if ($item->isFile() && $item->isReadable() && in_array($item->getExtension(), $ext)) {
                 $name = $item->getBasename('.' . $item->getExtension());
-                $path = ltrim(str_replace(
-                    array(rtrim($scanPath, '//'), '/'),
-                    array('', '\\'),
-                    $item->getPath() . '/'
-                ), '\\');
+                $path = ltrim(
+                    str_replace(
+                        [rtrim($scanPath, '//'), '/'],
+                        ['', '\\'],
+                        $item->getPath() . '/'
+                    ),
+                    '\\'
+                );
 
                 if (!empty($path)) {
                     $name = $path . $name;

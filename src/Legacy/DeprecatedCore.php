@@ -212,20 +212,20 @@ class DeprecatedCore
         $modx = evo();
         $data = [];
 
-        if ($modx->isFrontend() && isset ($_SESSION['webValidated'])) {
+        if ($modx->isFrontend() && session('webValidated')) {
             // web user
             $data['loggedIn'] = true;
-            $data['id'] = $_SESSION['webInternalKey'];
-            $data['username'] = $_SESSION['webShortname'];
+            $data['id'] = session('webInternalKey');
+            $data['username'] = session('webShortname');
             $data['usertype'] = 'web'; // added by Raymond
 
             return $data;
         } else {
-            if ($modx->isBackend() && isset ($_SESSION['mgrValidated'])) {
+            if ($modx->isBackend() && session('mgrValidated')) {
                 // manager user
                 $data['loggedIn'] = true;
-                $data['id'] = $_SESSION['mgrInternalKey'];
-                $data['username'] = $_SESSION['mgrShortname'];
+                $data['id'] = session('mgrInternalKey');
+                $data['username'] = session('mgrShortname');
                 $data['usertype'] = 'manager'; // added by Raymond
 
                 return $data;

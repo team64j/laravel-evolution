@@ -399,7 +399,7 @@ class SiteContent extends Model
             if (evo()->isFrontend()) {
                 $query->where('privateweb', 0);
             } else {
-                $query->whereRaw('1 = ' . ($_SESSION['mgrRole'] ?? 0));
+                $query->whereRaw('1 = ' . (session('mgrRole', 0)));
                 $query->orWhere('site_content.privatemgr', 0);
             }
             if ($docgrp) {
