@@ -10,9 +10,6 @@ use Team64j\LaravelEvolution\Models\SystemEventname;
 use Team64j\LaravelEvolution\Models\SystemSetting;
 use Team64j\LaravelEvolution\Models\UserSetting;
 
-/**
- * @class: synccache
- */
 class Cache
 {
     /**

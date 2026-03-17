@@ -17,14 +17,10 @@
   },
   "autoload": {
     "files": [
-      "src/helpers.php",
-      "legacy/DocumentParser.php",
-      "legacy/DLTemplate.php",
-      "legacy/SystemEvent.php"
+      "src/helpers.php"
     ],
     "psr-4": {
-      "Team64j\\LaravelEvolution\\": "src",
-      "EvolutionCMS\\": "evo/src"
+      "Team64j\\LaravelEvolution\\": "src"
     }
   },
   "extra": {

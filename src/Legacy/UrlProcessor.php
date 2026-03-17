@@ -4,9 +4,7 @@ namespace Team64j\LaravelEvolution\Legacy;
 
 use DocumentParser;
 use Illuminate\Support\Str;
-use Team64j\LaravelEvolution\Interfaces;
 use Team64j\LaravelEvolution\Legacy;
-use Team64j\LaravelEvolution\Models;
 use Team64j\LaravelEvolution\Models\SiteContent;
 
 class UrlProcessor
@@ -87,7 +85,7 @@ class UrlProcessor
         }
 
         $evtOut = $this->core->invokeEvent('OnMakeDocUrl', [
-            'id' => $id,
+            'id'  => $id,
             'url' => $url,
         ]);
 
@@ -188,8 +186,8 @@ class UrlProcessor
                     $path = (new Legacy\Cache)->getParents($parent);
                 }
 
-                while (isset($this->aliasListing[$parent]) &&
-                    (int) $this->aliasListing[$parent]['alias_visible'] === 0) {
+                while (isset($this->aliasListing[$parent])
+                    && (int) $this->aliasListing[$parent]['alias_visible'] === 0) {
                     $path = $this->aliasListing[$parent]['path'] ?? '';
                     $parent = $this->aliasListing[$parent]['parent'];
                 }
@@ -348,22 +346,23 @@ class UrlProcessor
             if ((bool) $this->core->getConfig('use_alias_path')) {
                 if ( //(
                     (
-                        $this->virtualDir !== '' &&
-                        !isset($this->documentListing[$this->virtualDir . '/' . $query])
-                    ) || ((
+                        $this->virtualDir !== ''
+                        && !isset($this->documentListing[$this->virtualDir . '/' . $query])
+                    )
+                    || ((
                             $this->virtualDir === '' && !isset($this->documentListing[$query])
                         )
                         //)
                         && (
                             (
-                                $this->virtualDir !== '' &&
-                                isset($this->documentListing[$this->virtualDir]) &&
-                                \in_array(
+                                $this->virtualDir !== ''
+                                && isset($this->documentListing[$this->virtualDir])
+                                && \in_array(
                                     $query,
                                     $this->core->getChildIds($this->documentListing[$this->virtualDir], 1)
                                 )
-                            ) ||
-                            ($this->virtualDir === '' && in_array($query, $this->core->getChildIds(0, 1)))
+                            )
+                            || ($this->virtualDir === '' && in_array($query, $this->core->getChildIds(0, 1)))
                         ))
                 ) {
                     $documentMethod = 'id';
@@ -433,10 +432,10 @@ class UrlProcessor
         }
 
         $this->aliasListing[$id] = [
-            'id' => $query->getKey(),
-            'alias' => $query->alias === '' ? $query->getKey() : $query->alias,
-            'parent' => $query->parent,
-            'isfolder' => $query->isfolder,
+            'id'            => $query->getKey(),
+            'alias'         => $query->alias === '' ? $query->getKey() : $query->alias,
+            'parent'        => $query->parent,
+            'isfolder'      => $query->isfolder,
             'alias_visible' => $query->alias_visible,
         ];
 
@@ -656,7 +655,7 @@ class UrlProcessor
         }
 
         $evtOut = $this->core->invokeEvent('OnMakeDocUrl', [
-            'id' => $id,
+            'id'  => $id,
             'url' => $url,
         ]);
 
@@ -726,8 +725,7 @@ class UrlProcessor
         }
 
         if (stripos($_SERVER['REQUEST_URI'], '/?q=' . $strictURL) !== false
-            ||
-            ($url_path != $strictURL && $id !== (int) $this->core->getConfig('error_page'))
+            || ($url_path != $strictURL && $id !== (int) $this->core->getConfig('error_page'))
         ) {
             if ($qstring) {
                 return $this->core->getConfig('site_url') . $strictURL . '?' . $qstring;

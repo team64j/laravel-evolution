@@ -8,6 +8,7 @@ use DocumentParser;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Team64j\LaravelEvolution\Evo;
 use Team64j\LaravelEvolution\Http\Controllers\EvoController;
 
 class EvoServiceProvider extends ServiceProvider
@@ -17,6 +18,8 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->registerLegacyAliases();
+
         $this->app->singleton('evo', fn() => new DocumentParser());
         $this->app->alias('evo', DocumentParser::class);
     }
@@ -49,7 +52,7 @@ class EvoServiceProvider extends ServiceProvider
             return;
         }
 
-        Route::match(['get', 'post', 'path', 'delete'], '{any}', EvoController::class)
+        Route::match(['get', 'post', 'path', 'delete'], '{any}', [Evo::class, 'executeParser'])
             ->middleware('web')
             ->where('any', '.*');
     }
@@ -64,5 +67,17 @@ class EvoServiceProvider extends ServiceProvider
         if (!$this->app->configurationIsCached()) {
             Config::set('database.connections.' . Config::get('database.default') . '.prefix', env('DB_PREFIX', ''));
         }
+    }
+
+    protected function registerLegacyAliases(): void
+    {
+        foreach (glob(__DIR__ . '/../Models/*') as $file) {
+            $class = basename($file, '.php');
+            class_alias('\Team64j\\LaravelEvolution\\Models\\' . $class, 'EvolutionCMS\\Models\\' . $class);
+        }
+
+        class_alias('\Team64j\\LaravelEvolution\\Evo', '\DocumentParser');
+        class_alias('\Team64j\\LaravelEvolution\\Legacy\\Parser', '\DLTemplate');
+        class_alias('\Team64j\\LaravelEvolution\\Legacy\\Event', '\SystemEvent');
     }
 }
