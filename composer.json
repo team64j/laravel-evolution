@@ -30,8 +30,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "Team64j\\LaravelEvolution\\Providers\\EvoServiceProvider",
-        "EvolutionCMS\\ServiceProvider"
+        "Team64j\\LaravelEvolution\\Providers\\EvoServiceProvider"
       ]
     }
   }

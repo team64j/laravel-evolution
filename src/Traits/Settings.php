@@ -2,9 +2,9 @@
 
 namespace Team64j\LaravelEvolution\Traits;
 
-use EvolutionCMS\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Team64j\LaravelEvolution\Models\SystemSetting;
 
 trait Settings
 {
@@ -24,60 +24,60 @@ trait Settings
      * @var array|string[]
      */
     protected array $casts = [
-        'error_reporting' => 'int',
-        'site_start' => 'int',
-        'error_page' => 'int',
-        'cache_type' => 'int',
-        'unauthorized_page' => 'int',
-        'server_offset_time' => 'int',
-        'site_unavailable_page' => 'int',
-        'site_status' => 'bool',
-        'use_alias_path' => 'bool',
-        'seostrict' => 'bool',
-        'make_folders' => 'bool',
-        'friendly_urls' => 'bool',
-        'xhtml_urls' => 'bool',
-        'alias_listing' => 'int',
-        'friendly_alias_urls' => 'bool',
-        'enable_cache' => 'float',
-        'enable_at_syntax' => 'bool',
-        'enable_filter' => 'bool',
-        'use_udperms' => 'bool',
-        'manager_menu_height' => 'float',
-        'manager_tree_width' => 'float',
-        'show_picker' => 'bool',
-        'show_fullscreen_btn' => 'bool',
+        'error_reporting'        => 'int',
+        'site_start'             => 'int',
+        'error_page'             => 'int',
+        'cache_type'             => 'int',
+        'unauthorized_page'      => 'int',
+        'server_offset_time'     => 'int',
+        'site_unavailable_page'  => 'int',
+        'site_status'            => 'bool',
+        'use_alias_path'         => 'bool',
+        'seostrict'              => 'bool',
+        'make_folders'           => 'bool',
+        'friendly_urls'          => 'bool',
+        'xhtml_urls'             => 'bool',
+        'alias_listing'          => 'int',
+        'friendly_alias_urls'    => 'bool',
+        'enable_cache'           => 'float',
+        'enable_at_syntax'       => 'bool',
+        'enable_filter'          => 'bool',
+        'use_udperms'            => 'bool',
+        'manager_menu_height'    => 'float',
+        'manager_tree_width'     => 'float',
+        'show_picker'            => 'bool',
+        'show_fullscreen_btn'    => 'bool',
         'export_includenoncache' => 'bool',
-        'number_of_results' => 'int',
-        'manager_theme_mode' => 'int',
-        'manager_login_startup' => 'int',
-        'global_tabs' => 'bool',
-        'remember_last_tab' => 'bool',
-        'show_newresource_btn' => 'bool',
-        'use_browser' => 'bool',
-        'warning_visibility' => 'bool',
-        'use_captcha' => 'bool',
-        'tree_page_click' => 'int',
-        'allow_multiple_emails' => 'bool',
-        'use_editor' => 'bool',
-        'group_tvs' => 'int',
-        'jpegQuality' => 'int',
-        'thumbHeight' => 'int',
-        'maxImageHeight' => 'int',
-        'maxImageWidth' => 'int',
-        'denyExtensionRename' => 'bool',
-        'denyZipDownload' => 'bool',
-        'showHiddenFiles' => 'bool',
+        'number_of_results'      => 'int',
+        'manager_theme_mode'     => 'int',
+        'manager_login_startup'  => 'int',
+        'global_tabs'            => 'bool',
+        'remember_last_tab'      => 'bool',
+        'show_newresource_btn'   => 'bool',
+        'use_browser'            => 'bool',
+        'warning_visibility'     => 'bool',
+        'use_captcha'            => 'bool',
+        'tree_page_click'        => 'int',
+        'allow_multiple_emails'  => 'bool',
+        'use_editor'             => 'bool',
+        'group_tvs'              => 'int',
+        'jpegQuality'            => 'int',
+        'thumbHeight'            => 'int',
+        'maxImageHeight'         => 'int',
+        'maxImageWidth'          => 'int',
+        'denyExtensionRename'    => 'bool',
+        'denyZipDownload'        => 'bool',
+        'showHiddenFiles'        => 'bool',
         'new_folder_permissions' => 'string', //Don't set int
-        'new_file_permissions' => 'string', //Don't set int
-        'upload_maxsize' => 'int',
+        'new_file_permissions'   => 'string', //Don't set int
+        'upload_maxsize'         => 'int',
         'noThumbnailsRecreation' => 'bool',
-        'clientResize' => 'bool',
-        'publish_default' => 'bool',
-        'search_default' => 'bool',
-        'cache_default' => 'bool',
-        'auto_menuindex' => 'bool',
-        'track_visitors' => 'bool',
+        'clientResize'           => 'bool',
+        'publish_default'        => 'bool',
+        'search_default'         => 'bool',
+        'cache_default'          => 'bool',
+        'auto_menuindex'         => 'bool',
+        'track_visitors'         => 'bool',
     ];
 
     /**
@@ -124,9 +124,9 @@ trait Settings
      */
     public function getSettings()
     {
-//        if ($config = Config::get('global')) {
-//            return $this->config = $config;
-//        }
+        //        if ($config = Config::get('global')) {
+        //            return $this->config = $config;
+        //        }
 
         $this->config = Cache::rememberForever(
             'config.global',

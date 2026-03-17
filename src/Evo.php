@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
-use EvolutionCMS\Models\DocumentGroup;
-use EvolutionCMS\Models\DocumentgroupName;
-use EvolutionCMS\Models\EventLog;
-use EvolutionCMS\Models\SiteContent;
-use EvolutionCMS\Models\SitePlugin;
-use EvolutionCMS\Models\SiteSnippet;
-use EvolutionCMS\Models\SiteTemplate;
-use EvolutionCMS\Models\SiteTmplvar;
-use EvolutionCMS\Models\SiteTmplvarContentvalue;
-use EvolutionCMS\Models\SiteTmplvarTemplate;
-use EvolutionCMS\Models\User;
+use Team64j\LaravelEvolution\Models\DocumentGroup;
+use Team64j\LaravelEvolution\Models\DocumentgroupName;
+use Team64j\LaravelEvolution\Models\EventLog;
+use Team64j\LaravelEvolution\Models\SiteContent;
+use Team64j\LaravelEvolution\Models\SitePlugin;
+use Team64j\LaravelEvolution\Models\SiteSnippet;
+use Team64j\LaravelEvolution\Models\SiteTemplate;
+use Team64j\LaravelEvolution\Models\SiteTmplvar;
+use Team64j\LaravelEvolution\Models\SiteTmplvarContentvalue;
+use Team64j\LaravelEvolution\Models\SiteTmplvarTemplate;
+use Team64j\LaravelEvolution\Models\User;
 use Exception;
 use FilesystemIterator;
 use Illuminate\Contracts\Container\BindingResolutionException;

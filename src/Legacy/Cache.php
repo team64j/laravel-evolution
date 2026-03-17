@@ -2,13 +2,13 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
-use EvolutionCMS\Models\SiteContent;
-use EvolutionCMS\Models\SiteHtmlSnippet;
-use EvolutionCMS\Models\SitePlugin;
-use EvolutionCMS\Models\SiteSnippet;
-use EvolutionCMS\Models\SystemEventname;
-use EvolutionCMS\Models\SystemSetting;
-use EvolutionCMS\Models\UserSetting;
+use Team64j\LaravelEvolution\Models\SiteContent;
+use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
+use Team64j\LaravelEvolution\Models\SitePlugin;
+use Team64j\LaravelEvolution\Models\SiteSnippet;
+use Team64j\LaravelEvolution\Models\SystemEventname;
+use Team64j\LaravelEvolution\Models\SystemSetting;
+use Team64j\LaravelEvolution\Models\UserSetting;
 
 /**
  * @class: synccache
@@ -79,7 +79,7 @@ class Cache
      *
      * @return array|string
      */
-    public function escapeSingleQuotes(array|string $s): array|string
+    public function escapeSingleQuotes(array | string $s): array | string
     {
         if ($s === '') {
             return $s;
@@ -96,7 +96,7 @@ class Cache
      *
      * @return array|string
      */
-    public function escapeDoubleQuotes(array|string $s): array|string
+    public function escapeDoubleQuotes(array | string $s): array | string
     {
         $q1 = ["\\", "\"", "\r", "\n", "\$"];
         $q2 = ["\\\\", "\\\"", "\\r", "\\n", "\\$"];
@@ -110,7 +110,7 @@ class Cache
      *
      * @return string
      */
-    public function getParents(int|string $id, string $path = ''): string
+    public function getParents(int | string $id, string $path = ''): string
     {
         // modx:returns child's parent
         if (empty($this->aliases)) {
@@ -211,7 +211,7 @@ class Cache
     /**
      * @param int|string $cacheRefreshTime
      */
-    public function publishTimeConfig(int|string $cacheRefreshTime = ''): void
+    public function publishTimeConfig(int | string $cacheRefreshTime = ''): void
     {
         $cacheRefreshTimeFromDB = $this->getCacheRefreshTime();
         if (!preg_match('@^[0-9]+$]@', $cacheRefreshTime) || $cacheRefreshTimeFromDB < $cacheRefreshTime) {
@@ -452,7 +452,7 @@ class Cache
             mkdir(dirname($filename), 0755, true);
         }
 
-//        \Illuminate\Support\Facades\Cache::forever($filename, $content);
+        //        \Illuminate\Support\Facades\Cache::forever($filename, $content);
         if (@file_put_contents($filename, $content) === false) {
             exit("Cannot write $filename! Make sure file or its directory is writable!");
         }

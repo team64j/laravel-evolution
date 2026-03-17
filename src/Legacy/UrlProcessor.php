@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Team64j\LaravelEvolution\Interfaces;
 use Team64j\LaravelEvolution\Legacy;
 use Team64j\LaravelEvolution\Models;
+use Team64j\LaravelEvolution\Models\SiteContent;
 
 class UrlProcessor
 {
@@ -171,7 +172,8 @@ class UrlProcessor
             return;
         }
 
-        $data = \EvolutionCMS\Models\SiteContent::select(['id', 'parent', 'alias', 'isfolder', 'alias_visible'])
+        $data = SiteContent::query()
+            ->select(['id', 'parent', 'alias', 'isfolder', 'alias_visible'])
             ->whereIn('id', $ids)
             ->where('isfolder', '=', 0)
             ->get();
@@ -208,7 +210,7 @@ class UrlProcessor
             return;
         }
 
-        $data = \EvolutionCMS\Models\SiteContent::select(['id', 'parent', 'alias', 'isfolder', 'alias_visible'])
+        $data = SiteContent::select(['id', 'parent', 'alias', 'isfolder', 'alias_visible'])
             ->whereIn('id', $ids)
             ->get();
 
@@ -422,8 +424,8 @@ class UrlProcessor
             return $this->aliasListing[$id];
         }
 
-        /** @var \EvolutionCMS\Models\SiteContent|null $query */
-        $query = \EvolutionCMS\Models\SiteContent::where('id', '=', (int) $id)
+        /** @var SiteContent|null $query */
+        $query = SiteContent::where('id', '=', (int) $id)
             ->first();
 
         if ($query === null) {
@@ -477,8 +479,8 @@ class UrlProcessor
         }
 
         if (!(bool) $this->core->getConfig('use_alias_path')) {
-            /** @var \EvolutionCMS\Models\SiteContent $query */
-            $query = \EvolutionCMS\Models\SiteContent::where('deleted', '=', 0)
+            /** @var SiteContent $query */
+            $query = SiteContent::where('deleted', '=', 0)
                 ->where('alias', '=', $alias)
                 ->first();
 
@@ -505,15 +507,15 @@ class UrlProcessor
             if ($id === null) {
                 break;
             }
-            /** @var \EvolutionCMS\Models\SiteContent $query */
-            $query = \EvolutionCMS\Models\SiteContent::where('deleted', '=', 0)
+            /** @var SiteContent $query */
+            $query = SiteContent::where('deleted', '=', 0)
                 ->where('parent', '=', $id)
                 ->where('alias', '=', $tmp)
                 ->first();
 
             if ($query === null) {
-                /** @var \EvolutionCMS\Models\SiteContent $query */
-                $query = \EvolutionCMS\Models\SiteContent::where('deleted', '=', 0)
+                /** @var SiteContent $query */
+                $query = SiteContent::where('deleted', '=', 0)
                     ->where('parent', '=', $id)
                     ->where('id', '=', $tmp)
                     ->first();

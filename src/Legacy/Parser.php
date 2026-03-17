@@ -3,14 +3,13 @@
 namespace Team64j\LaravelEvolution\Legacy;
 
 use DocumentParser;
-use EvolutionCMS\Models\SiteHtmlSnippet;
-use EvolutionCMS\Models\SiteTemplate;
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\View\Factory;
 use Illuminate\View\FileViewFinder;
+use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
+use Team64j\LaravelEvolution\Models\SiteTemplate;
 
 /**
  */
@@ -73,18 +72,14 @@ class Parser
      *
      * @return void
      */
-    private function __clone()
-    {
-    }
+    private function __clone() {}
 
     /**
      * prevent from being unserialized
      *
      * @return void
      */
-    public function __wakeup()
-    {
-    }
+    public function __wakeup() {}
 
     /**
      * @return string
@@ -223,7 +218,8 @@ class Parser
                     '/^((@[A-Z_]+)[:]{0,1})(.*)/Asu',
                     trim($name),
                     $tmp
-                ) && isset($tmp[2], $tmp[3])) ? $tmp[2] : false;
+                )
+                && isset($tmp[2], $tmp[3])) ? $tmp[2] : false;
             $subTmp = (isset($tmp[3])) ? trim($tmp[3]) : null;
             if ($this->bladeEnabled) {
                 $ext = $this->getTemplateExtension();
@@ -251,9 +247,9 @@ class Parser
                             MODX_BASE_PATH . $this->templatePath . $this->cleanPath($subTmp) . '.' .
                             $this->templateExtension
                         );
-                        if (basename($path, '.' . $this->templateExtension) !== '' &&
-                            str_starts_with($path, $real) &&
-                            file_exists($path)
+                        if (basename($path, '.' . $this->templateExtension) !== ''
+                            && str_starts_with($path, $real)
+                            && file_exists($path)
                         ) {
                             $tpl = file_get_contents($path);
                         }
@@ -385,7 +381,7 @@ class Parser
         $m->documentContent = $tpl;
         if ($events) {
             $m->invokeEvent("OnLoadWebDocument", [
-                'source' => 'DLTemplate',
+                'source'   => 'DLTemplate',
                 'mainModx' => $this->core,
             ]);
         }
@@ -439,14 +435,14 @@ class Parser
                     $item = $this->renameKeyArr($data, '[', ']', '+');
                     $out = str_replace(array_keys($item), array_values($item), $out);
                 }
-//                if (!$disablePHx && preg_match("/:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?/is", $out)) {
-//                    if (is_null($this->phx) || !($this->phx instanceof Phx)) {
-//                        $this->phx = $this->createPHx(0, 1000);
-//                    }
-//                    $this->phx->placeholders = [];
-//                    $this->setPHxPlaceholders($data);
-//                    $out = $this->phx->Parse($out);
-//                }
+                //                if (!$disablePHx && preg_match("/:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?/is", $out)) {
+                //                    if (is_null($this->phx) || !($this->phx instanceof Phx)) {
+                //                        $this->phx = $this->createPHx(0, 1000);
+                //                    }
+                //                    $this->phx->placeholders = [];
+                //                    $this->setPHxPlaceholders($data);
+                //                    $out = $this->phx->Parse($out);
+                //                }
                 break;
         }
         if ($parseDocumentSource && !$blade) {
