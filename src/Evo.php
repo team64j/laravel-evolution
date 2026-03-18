@@ -119,12 +119,6 @@ class Evo
 
     public function __construct()
     {
-        app()->singleton('evo.url', fn() => new Legacy\UrlProcessor());
-        app()->singleton('evo.tpl', fn() => new Legacy\Parser());
-        app()->singleton('evo.db', fn() => new Legacy\Database());
-        app()->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
-        app()->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
-
         $this->initialize();
     }
 

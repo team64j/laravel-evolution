@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Providers;
 
-use DocumentParser;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Team64j\LaravelEvolution\Evo;
-use Team64j\LaravelEvolution\Http\Controllers\EvoController;
+use Team64j\LaravelEvolution\Legacy;
 
 class EvoServiceProvider extends ServiceProvider
 {
@@ -20,8 +19,23 @@ class EvoServiceProvider extends ServiceProvider
     {
         $this->registerLegacyAliases();
 
-        $this->app->singleton('evo', fn() => new DocumentParser());
-        $this->app->alias('evo', DocumentParser::class);
+        $this->app->singleton('evo', fn() => new Evo());
+        $this->app->alias('evo', Evo::class);
+
+        $this->app->singleton('evo.url', fn() => new Legacy\UrlProcessor());
+        $this->app->alias('evo.url', Legacy\UrlProcessor::class);
+
+        $this->app->singleton('evo.tpl', fn() => new Legacy\Parser());
+        $this->app->alias('evo.tpl', Legacy\Parser::class);
+
+        $this->app->singleton('evo.db', fn() => new Legacy\Database());
+        $this->app->alias('evo.db', Legacy\Database::class);
+
+        $this->app->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
+        $this->app->alias('evo.deprecated', Legacy\DeprecatedCore::class);
+
+        $this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
+        $this->app->alias('evo.ManagerTheme', Legacy\ManagerTheme::class);
     }
 
     /**

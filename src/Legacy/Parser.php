@@ -662,9 +662,9 @@ class Parser
     /**
      * @param $templateID
      *
-     * @return mixed
+     * @return string|null
      */
-    public function getTemplateCodeFromDB($templateID)
+    public function getTemplateCodeFromDB($templateID): ?string
     {
         return SiteTemplate::query()->findOrFail($templateID)->content;
     }
