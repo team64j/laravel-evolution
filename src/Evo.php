@@ -374,7 +374,7 @@ class Evo
             }
 
             if ($this->getConfig('seostrict')) {
-                return $this->sendStrictURI();
+                $this->sendStrictURI();
             }
 
             return $this->prepareResponse();
@@ -473,7 +473,7 @@ class Evo
         }
 
         if ($this->getConfig('seostrict')) {
-            return $this->sendStrictURI();
+            $this->sendStrictURI();
         }
 
         return $this->prepareResponse();
@@ -1320,7 +1320,7 @@ class Evo
             $this->documentName = &$this->documentObject['pagetitle'];
 
             // check if we should not hit this document
-            if ($this->documentObject['hide_from_tree'] == 1) {
+            if (!empty($this->documentObject['hide_from_tree'])) {
                 $this->setConfig('track_visitors', 0);
             }
 
@@ -2617,7 +2617,7 @@ class Evo
             }
 
             if (Str::contains($content, $s)) {
-                $content = str_replace($s, $value, $content);
+                $content = str_replace($s, (string) $value, $content);
             } elseif ($this->debug) {
                 $this->addLog('mergeDocumentContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
             }
@@ -3599,7 +3599,7 @@ class Evo
             }
         }
         if (Str::contains($key, '[')) {
-            $value = $key ? eval("return $key;") : '';
+            //$value = $key ? eval("return $key;") : '';
         } elseif (0 < eval("return count($key);")) {
             $value = eval("return print_r($key,true);");
         } else {
@@ -4001,7 +4001,7 @@ class Evo
             }
             $s = &$matches[0][$i];
             if (Str::contains($content, $s)) {
-                $content = str_replace($s, $value, $content);
+                $content = str_replace($s, (string) $value, $content);
             } elseif ($this->debug) {
                 $this->addLog('mergePlaceholderContent parse error', $_SERVER['REQUEST_URI'] . $s, 2);
             }

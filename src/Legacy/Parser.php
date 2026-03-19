@@ -22,9 +22,9 @@ class Parser
     protected DocumentParser $core;
 
     /**
-     * @var Parser cached reference to singleton instance
+     * @var Parser|null cached reference to singleton instance
      */
-    protected static Parser $instance;
+    protected static ?Parser $instance = null;
 
     protected string $templatePath = 'views/';
 
@@ -92,14 +92,14 @@ class Parser
     /**
      * Задает относительный путь к папке с шаблонами
      *
-     * @param string $path
+     * @param string|null $path
      * @param bool $supRoot
      *
      * @return $this
      */
-    public function setTemplatePath(string $path, bool $supRoot = false): static
+    public function setTemplatePath(?string $path, bool $supRoot = false): static
     {
-        $path = trim($path);
+        $path = trim($path ?? '');
         if ($supRoot === false) {
             $path = $this->cleanPath($path);
         }
