@@ -10,4 +10,14 @@ class ManagerTheme
     {
         return null;
     }
+
+    static public function getLexicon($key = null, $default = '')
+    {
+        return __('global.' . $key) ?? $default;
+    }
+
+    static public function getLang()
+    {
+        return __();
+    }
 }

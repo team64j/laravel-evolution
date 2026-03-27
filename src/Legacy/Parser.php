@@ -208,7 +208,7 @@ class Parser
      *
      * @return string|null html template with placeholders without data
      */
-    public function getChunk(string $name): ?string
+    public function getChunk(string $name): null|string|object
     {
         $tpl = '';
         $ext = null;
@@ -588,16 +588,20 @@ class Parser
     {
         $template = false;
         $doc = $this->core->documentObject;
-        if (isset($this->core->documentObject['templatealias']) && $this->core->documentObject['templatealias'] != '') {
-            $templateAlias = $this->core->documentObject['templatealias'];
+        $templateController = null;
+        if (isset($doc['templatealias']) && $doc['templatealias'] != '') {
+            $templateAlias = $doc['templatealias'];
+            $templateController = $doc['templatecontroller'] ?? '';
         } else {
             if ($doc['template'] === 0) {
                 $templateAlias = '_blank';
             } else {
-                $templateAlias = SiteTemplate::query()
+                $model = SiteTemplate::query()
                     ->select('templatealias')
-                    ->find($doc['template'])
-                    ->templatealias;
+                    ->find($doc['template']);
+
+                $templateAlias = $model->templatealias;
+                $templateController = $model->templatecontroller;
             }
         }
 
@@ -614,31 +618,84 @@ class Parser
             case view()->exists($templateAlias):
                 $namespace = trim($this->core->getConfig('ControllerNamespace', '') ?: '');
                 if (!empty($namespace)) {
-                    $baseClassName = $namespace . 'BaseController';
-                    if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
-                        $classArray = explode('.', $templateAlias);
-                        $classArray = array_map(
-                            function ($item) {
-                                return $this->setPsrClassNames($item);
-                            },
-                            $classArray
-                        );
-                        $classViewPart = implode('.', $classArray);
-                        $className = str_replace('.', '\\', $classViewPart);
-                        $className = $namespace . ucfirst($className) . 'Controller';
-                        if (!class_exists(
-                            $className
-                        )
-                        ) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
-                            $className = $baseClassName;
+                    if(!empty($templateController) && class_exists($namespace . $templateController)) {
+                        if (isset($doc['id'])) {
+                            $documentObject = $this->core->makeDocumentObject($doc['id']);
+                            $data = [
+                                'modx' => $this->core,
+                                'documentObject' => $documentObject,
+                            ];
+                            $this->core->addDataToView($documentObject);
+                        } else {
+                            $data = [
+                                'modx' => $this->core,
+                                'documentObject' => [],
+                            ];
                         }
-                        $controller = app()->make($className);
-                        if (method_exists($controller, 'main')) {
-                            app()->call([$controller, 'main']);
+
+                        $controller = $namespace . $templateController;
+                        $controller = new $controller;
+                        $controller->setView($templateAlias);
+                        $controller->addViewData($data);
+                        $controller->process();
+                        $this->core->addDataToView($controller->getViewData());
+                        $view = $controller->getView();
+                        if(!empty($view)) {
+                            $templateAlias = $view;
                         }
-                    } else {
-                        $this->core->logEvent(0, 3, $baseClassName . ' not exists!');
+                    } elseif($this->core['view']->exists($templateAlias)) {
+                        $baseClassName = $namespace . 'BaseController';
+                        if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
+                            $classArray = explode('.', $templateAlias);
+                            $classArray = array_map(
+                                function ($item) {
+                                    return $this->setPsrClassNames($item);
+                                },
+                                $classArray
+                            );
+                            $classViewPart = implode('.', $classArray);
+                            $className = str_replace('.', '\\', $classViewPart);
+                            $className = $namespace . ucfirst($className) . 'Controller';
+                            if (!class_exists(
+                                $className
+                            )) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
+                                $className = $baseClassName;
+                            }
+                            $controller = $this->core->make($className);
+                            if (method_exists($controller, 'main')) {
+                                $this->core->call([$controller, 'main']);
+                            }
+                        } else {
+                            $this->core->logEvent(0, 3, $baseClassName . ' not exists!');
+                        }
                     }
+//                    $baseClassName = $namespace . 'BaseController';
+//                    if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
+//                        $classArray = explode('.', $templateAlias);
+//                        $classArray = array_map(
+//                            function ($item) {
+//                                return $this->setPsrClassNames($item);
+//                            },
+//                            $classArray
+//                        );
+//                        $classViewPart = implode('.', $classArray);
+//                        $className = str_replace('.', '\\', $classViewPart);
+//                        $className = $namespace . ucfirst($className) . 'Controller';
+//                        if (!class_exists(
+//                            $className
+//                        )
+//                        ) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
+//                            $className = $baseClassName;
+//                        }
+//                        dd($className);
+//                        $controller = app()->make($className);
+//                        if (method_exists($controller, 'main')) {
+//                            app()->call([$controller, 'main']);
+//                        }
+//                        $this->core->addDataToView($controller->getViewData());
+//                    } else {
+//                        $this->core->logEvent(0, 3, $baseClassName . ' not exists!');
+//                    }
                 }
                 $template = $templateAlias;
                 break;

@@ -663,7 +663,7 @@ class UrlProcessor
             $url = array_pop($evtOut);
         }
 
-        return '/' . ltrim($url, '/');
+        return $url;
     }
 
     public function strictURI(string $query, int $id): ?string

@@ -2,6 +2,7 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
+use Team64j\LaravelEvolution\Evo;
 use Team64j\LaravelEvolution\Models\SiteContent;
 use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
 use Team64j\LaravelEvolution\Models\SitePlugin;
@@ -11,7 +12,7 @@ use Team64j\LaravelEvolution\Models\SystemSetting;
 use Team64j\LaravelEvolution\Models\UserSetting;
 
 class Cache
-{
+{    
     /**
      * @var string
      */
@@ -50,9 +51,9 @@ class Cache
     /**
      * sync cache constructor.
      */
-    public function __construct()
+    public function __construct(protected Evo $core)
     {
-        $this->request_time = $_SERVER['REQUEST_TIME'] + evo()->getConfig('server_offset_time');
+        $this->request_time = $_SERVER['REQUEST_TIME'] + config('global.server_offset_time');
     }
 
     /**
@@ -275,8 +276,6 @@ class Cache
      */
     public function buildCache(): bool
     {
-        $modx = evo();
-
         $content = "<?php\n";
         //$content = '';
 
@@ -367,12 +366,12 @@ class Cache
                     $content .= '$s[\'' . $row['name'] . '\']=\'return false;\';';
                 } else {
                     $value = trim($row['snippet']);
-                    if ($modx->getConfig('minifyphp_incache')) {
+                    if (config('global.minifyphp_incache')) {
                         $value = $this->php_strip_whitespace($value);
                     }
                     $content .= '$s[\'' . $row['name'] . '\']=\'' . $this->escapeSingleQuotes($value) . '\';';
-                    $properties = $modx->parseProperties($row['properties']);
-                    $sharedproperties = $modx->parseProperties($row['sharedproperties']);
+                    $properties = $this->core->parseProperties($row['properties']);
+                    $sharedproperties = $this->core->parseProperties($row['sharedproperties']);
                     $properties = array_merge($sharedproperties, $properties);
                     if (0 < count($properties)) {
                         $content .= '$s[\'' . $row['name'] . 'Props\']=\'' .
@@ -392,13 +391,13 @@ class Cache
             $content .= '$p=&$this->pluginCache;';
             foreach ($plugins->toArray() as $row) {
                 $value = trim($row['plugincode']);
-                if ($modx->getConfig('minifyphp_incache')) {
+                if (config('global.minifyphp_incache')) {
                     $value = $this->php_strip_whitespace($value);
                 }
                 $content .= '$p[\'' . $row['name'] . '\']=\'' . $this->escapeSingleQuotes($value) . '\';';
                 if ($row['properties'] != '' || $row['sharedproperties'] != '') {
-                    $properties = $modx->parseProperties($row['properties']);
-                    $sharedproperties = $modx->parseProperties($row['sharedproperties']);
+                    $properties = $this->core->parseProperties($row['properties']);
+                    $sharedproperties = $this->core->parseProperties($row['sharedproperties']);
                     $properties = array_merge($sharedproperties, $properties);
                     if (0 < count($properties)) {
                         $content .= '$p[\'' . $row['name'] . 'Props\']=\'' .
@@ -440,10 +439,10 @@ class Cache
         $content .= "\n";
 
         // close and write the file
-        $filename = $modx->getSiteCacheFilePath();
+        $filename = $this->core->getSiteCacheFilePath();
 
         // invoke OnBeforeCacheUpdate event
-        $modx->invokeEvent('OnBeforeCacheUpdate');
+        $this->core->invokeEvent('OnBeforeCacheUpdate');
 
         if (!is_dir(dirname($filename))) {
             mkdir(dirname($filename), 0755, true);
@@ -462,7 +461,7 @@ class Cache
         }
 
         // invoke OnCacheUpdate event
-        $modx->invokeEvent('OnCacheUpdate');
+        $this->core->invokeEvent('OnCacheUpdate');
 
         return true;
     }

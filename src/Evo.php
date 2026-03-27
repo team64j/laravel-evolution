@@ -4,6 +4,24 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution;
 
+use Exception;
+use FilesystemIterator;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Fluent;
+use Illuminate\Support\Str;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
+use stdClass;
+use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
+use Team64j\LaravelEvolution\Legacy\Event;
 use Team64j\LaravelEvolution\Models\DocumentGroup;
 use Team64j\LaravelEvolution\Models\DocumentgroupName;
 use Team64j\LaravelEvolution\Models\EventLog;
@@ -15,23 +33,6 @@ use Team64j\LaravelEvolution\Models\SiteTmplvar;
 use Team64j\LaravelEvolution\Models\SiteTmplvarContentvalue;
 use Team64j\LaravelEvolution\Models\SiteTmplvarTemplate;
 use Team64j\LaravelEvolution\Models\User;
-use Exception;
-use FilesystemIterator;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
-use stdClass;
-use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
-use Team64j\LaravelEvolution\Legacy\Event;
 
 class Evo
 {
@@ -82,6 +83,7 @@ class Evo
     protected array $evolutionProperty = [
         'db' => 'getDatabase',
     ];
+    public $loadedjscripts = [];
 
     /**
      * @var array
@@ -120,6 +122,11 @@ class Evo
     public function __construct()
     {
         $this->initialize();
+    }
+
+    public function getLocale()
+    {
+        return app()->getLocale();
     }
 
     /**
@@ -485,6 +492,7 @@ class Evo
     public function initialize(): void
     {
         $this->saveConfig = $this->config;
+
         $this->config = $this->configCompatibility();
 
         // events
@@ -497,6 +505,13 @@ class Evo
         $this->checkAuth();
         $this->getSettings();
         $this->q = Request::getPathInfo();
+        $_GET['q'] = ltrim($this->q, '/');
+
+        $siteCachePath = $this->getSiteCacheFilePath();
+
+        if (is_file($siteCachePath)) {
+            include $siteCachePath;
+        }
     }
 
     /**
@@ -1336,24 +1351,24 @@ class Evo
 
             if ($template) {
                 $this->documentObject['cacheable'] = 0;
-                if (isset($this->documentObject['id'])) {
-                    $data = [
-                        'modx'           => $this,
-                        'documentObject' => $this->makeDocumentObject($this->documentObject['id']),
-                    ];
-                } else {
-                    $data = [
-                        'modx'              => $this,
-                        'documentObject'    => [],
-                        'siteContentObject' => [],
-                    ];
-                }
-
-                view()->share($data);
-
-                if ($this->isChunkProcessor('DLTemplate')) {
-                    app('evo.tpl')->getBlade()->share($data);
-                }
+                //                if (isset($this->documentObject['id'])) {
+                //                    $data = [
+                //                        'modx'           => $this,
+                //                        'documentObject' => $this->makeDocumentObject($this->documentObject['id']),
+                //                    ];
+                //                } else {
+                //                    $data = [
+                //                        'modx'              => $this,
+                //                        'documentObject'    => [],
+                //                        'siteContentObject' => [],
+                //                    ];
+                //                }
+                //
+                //                view()->share($data);
+                //
+                //                if ($this->isChunkProcessor('DLTemplate')) {
+                //                    app('evo.tpl')->getBlade()->share($data);
+                //                }
 
                 try {
                     $tpl = view()->make($template, $this->dataForView);
@@ -1416,7 +1431,8 @@ class Evo
             $this->cacheKey = (string) $key;
         }
 
-        $content = file_exists($this->getHashFile($key)) ? file_get_contents($this->getHashFile($key)) : null;
+        //$content = file_exists($this->getHashFile($key)) ? file_get_contents($this->getHashFile($key)) : null;
+        $content = null;
 
         if (!$content) {
             $this->documentGenerated = 1;
@@ -1676,10 +1692,12 @@ class Evo
                 }
                 $documentObject = array_merge($documentObject, $tmplvars);
 
-                $documentObject['templatealias'] = SiteTemplate::query()
-                    ->select('templatealias')
-                    ->firstWhere('id', $documentObject['template'])
-                    ->templatealias;
+                $template = SiteTemplate::query()
+                    ->select('templatealias', 'templatecontroller')
+                    ->firstWhere('id', $documentObject['template']);
+
+                $documentObject['templatealias'] = $template->templatealias;
+                $documentObject['templatecontroller'] = $template->templatecontroller;
             }
             $out = $this->invokeEvent(
                 'OnAfterLoadDocumentObject',
@@ -3018,6 +3036,16 @@ class Evo
         return $output;
     }
 
+    public function getTemplateVar($idname = "", $fields = "*", $docid = "", $published = 1, $checkAccess = true)
+    {
+        if ($idname == "") {
+            return false;
+        }
+
+        $result = $this->getTemplateVars(array($idname), $fields, $docid, $published, "", "", $checkAccess); //remove sorting for speed
+        return ($result != false) ? $result[0] : false;
+    }
+
     /**
      * @param array $idnames
      * @param string $fields
@@ -3032,12 +3060,13 @@ class Evo
     public function getTemplateVars(
         array $idnames = [],
         string $fields = '*',
-        int $docid = 0,
+        int | string $docid = 0,
         int $published = 1,
         string $sort = 'rank',
         string $dir = 'ASC',
         bool $checkAccess = true
     ): mixed {
+        $docid = (int) $docid;
         static $cached = [];
         $cacheKey = md5(print_r(func_get_args(), true));
         if (isset($cached[$cacheKey])) {
@@ -3745,9 +3774,9 @@ class Evo
      * @param string $phpcode
      * @param array $params
      *
-     * @return array|string
+     * @return array|string|object
      */
-    public function evalSnippet(string $phpcode, array $params): array | string
+    public function evalSnippet(string $phpcode, array $params): array | string | object
     {
         $modx = &$this;
         /*
@@ -4194,14 +4223,16 @@ class Evo
      */
     public function outputContent(bool $noEvent = false, bool $postParse = true): string
     {
-        $hashFile = $this->getHashFile($this->makePageCacheKey($this->documentIdentifier));
+        $this->documentOutput = $this->documentContent;
 
-        if (file_exists($hashFile)) {
-            $this->documentOutput = file_get_contents($hashFile);
-        } else {
-            $this->documentOutput = $this->documentContent;
-            file_put_contents($hashFile, $this->documentContent);
-        }
+//        $hashFile = $this->getHashFile($this->makePageCacheKey($this->documentIdentifier));
+//
+//        if (file_exists($hashFile)) {
+//            $this->documentOutput = file_get_contents($hashFile);
+//        } else {
+//            $this->documentOutput = $this->documentContent;
+//            file_put_contents($hashFile, $this->documentContent);
+//        }
 
         if ($this->documentGenerated == 1
             && $this->documentObject['cacheable'] == 1
@@ -4593,5 +4624,138 @@ class Evo
         }
 
         return $out;
+    }
+
+    /**
+     * Registers Client-side CSS scripts - these scripts are loaded at inside
+     * the <head> tag
+     *
+     * @param string $src
+     * @param string $media Default: Empty string
+     * @return void
+     */
+    public function regClientCSS($src, $media = '')
+    {
+        if (empty($src) || isset($this->loadedjscripts[$src])) {
+            return;
+        }
+        $nextpos = max(array_merge(array(0), array_keys($this->sjscripts))) + 1;
+        $this->loadedjscripts[$src]['startup'] = true;
+        $this->loadedjscripts[$src]['version'] = '0';
+        $this->loadedjscripts[$src]['pos'] = $nextpos;
+        if (stripos($src, '<style') !== false || stripos($src, '<link') !== false) {
+            $this->sjscripts[$nextpos] = $src;
+        } else {
+            $this->sjscripts[$nextpos] = "\t" . '<link rel="stylesheet" type="text/css" href="' . $src . '" ' . ($media ? 'media="' . $media . '" ' : '') . '/>';
+        }
+    }
+
+    /**
+     * Registers Startup Client-side JavaScript - these scripts are loaded at inside the <head> tag
+     *
+     * @param string $src
+     * @param array $options Default: 'name'=>'', 'version'=>'0', 'plaintext'=>false
+     */
+    public function regClientStartupScript($src, $options = array('name' => '', 'version' => '0', 'plaintext' => false))
+    {
+        $this->regClientScript($src, $options, true);
+    }
+
+    /**
+     * Registers Client-side JavaScript these scripts are loaded at the end of the page unless $startup is true
+     *
+     * @param string $src
+     * @param array $options Default: 'name'=>'', 'version'=>'0', 'plaintext'=>false
+     * @param boolean $startup Default: false
+     * @return void
+     */
+    public function regClientScript($src, $options = array('name' => '', 'version' => '0', 'plaintext' => false), $startup = false)
+    {
+        if (empty($src)) {
+            return;
+        } // nothing to register
+        if (!is_array($options)) {
+            if (\is_bool($options)) {
+                // backward compatibility with old plaintext parameter
+                $options = array('plaintext' => $options);
+            } elseif (\is_string($options)) {
+                // Also allow script name as 2nd param
+                $options = array('name' => $options);
+            } else {
+                $options = [];
+            }
+        }
+        $name = isset($options['name']) ? strtolower($options['name']) : '';
+        $version = isset($options['version']) ? $options['version'] : '0';
+        $plaintext = isset($options['plaintext']) ? $options['plaintext'] : false;
+        $key = !empty($name) ? $name : $src;
+        unset($overwritepos); // probably unnecessary--just making sure
+
+        $useThisVer = true;
+        if (isset($this->loadedjscripts[$key])) { // a matching script was found
+            // if existing script is a startup script, make sure the candidate is also a startup script
+            if ($this->loadedjscripts[$key]['startup']) {
+                $startup = true;
+            }
+
+            if (empty($name)) {
+                $useThisVer = false; // if the match was based on identical source code, no need to replace the old one
+            } else {
+                $useThisVer = version_compare($this->loadedjscripts[$key]['version'], $version, '<');
+            }
+
+            if ($useThisVer) {
+                if ($startup == true && $this->loadedjscripts[$key]['startup'] == false) {
+                    // remove old script from the bottom of the page (new one will be at the top)
+                    unset($this->jscripts[$this->loadedjscripts[$key]['pos']]);
+                } else {
+                    // overwrite the old script (the position may be important for dependent scripts)
+                    $overwritepos = $this->loadedjscripts[$key]['pos'];
+                }
+            } else { // Use the original version
+                if ($startup != true || $this->loadedjscripts[$key]['startup'] != false) {
+                    return; // the script is already in the right place
+                }
+
+                // need to move the exisiting script to the head
+                $version = $this->loadedjscripts[$key][$version];
+                $src = $this->jscripts[$this->loadedjscripts[$key]['pos']];
+                unset($this->jscripts[$this->loadedjscripts[$key]['pos']]);
+            }
+        }
+
+        if ($useThisVer && $plaintext != true && (stripos($src, "<script") === false)) {
+            $src = "\t" . '<script type="text/javascript" src="' . $src . '"></script>';
+        }
+        if ($startup) {
+            $pos = isset($overwritepos) ? $overwritepos : max(array_merge(array(0), array_keys($this->sjscripts))) + 1;
+            $this->sjscripts[$pos] = $src;
+        } else {
+            $pos = isset($overwritepos) ? $overwritepos : max(array_merge(array(0), array_keys($this->jscripts))) + 1;
+            $this->jscripts[$pos] = $src;
+        }
+        $this->loadedjscripts[$key]['version'] = $version;
+        $this->loadedjscripts[$key]['startup'] = $startup;
+        $this->loadedjscripts[$key]['pos'] = $pos;
+    }
+
+    /**
+     * Returns all registered JavaScripts
+     *
+     * @return void
+     */
+    public function regClientStartupHTMLBlock($html)
+    {
+        $this->regClientScript($html, true, true);
+    }
+
+    /**
+     * Returns all registered startup scripts
+     *
+     * @return void
+     */
+    public function regClientHTMLBlock($html)
+    {
+        $this->regClientScript($html, true);
     }
 }

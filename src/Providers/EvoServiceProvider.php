@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Team64j\LaravelEvolution\Providers;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -17,16 +18,25 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $_SESSION = Legacy\Session::make(session()->all());
+
         $this->registerLegacyAliases();
+        $this->bladeDirectives();
 
         $this->app->singleton('evo', fn() => new Evo());
         $this->app->alias('evo', Evo::class);
 
         $this->app->singleton('evo.url', fn() => new Legacy\UrlProcessor());
+        $this->app->singleton('UrlProcessor', fn() => new Legacy\UrlProcessor());
         $this->app->alias('evo.url', Legacy\UrlProcessor::class);
+
+        $this->app->singleton('HelperProcessor', fn() => new Legacy\HelperProcessor());
 
         $this->app->singleton('evo.tpl', fn() => new Legacy\Parser());
         $this->app->alias('evo.tpl', Legacy\Parser::class);
+
+        $this->app->singleton('evo.cache', fn() => new Legacy\Cache());
+        $this->app->alias('evo.cache', Legacy\Cache::class);
 
         $this->app->singleton('evo.db', fn() => new Legacy\Database());
         $this->app->alias('evo.db', Legacy\Database::class);
@@ -36,6 +46,11 @@ class EvoServiceProvider extends ServiceProvider
 
         $this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
         $this->app->alias('evo.ManagerTheme', Legacy\ManagerTheme::class);
+
+        register_shutdown_function([$this, 'registerShutdown']);
+
+        //        $this->app->singleton('evo.auth', fn() => new \Team64j\LaravelEvolution\Facades\AuthServices());
+        //        $this->app->alias('evo.auth', \Team64j\LaravelEvolution\Facades\AuthServices::class);
     }
 
     /**
@@ -66,8 +81,8 @@ class EvoServiceProvider extends ServiceProvider
             return;
         }
 
-        Route::match(['get', 'post', 'path', 'delete'], '{any}', [Evo::class, 'executeParser'])
-            ->middleware('web')
+        Route::middleware('web')
+            ->match(['get', 'post', 'path', 'delete'], '{any}', [Evo::class, 'executeParser'])
             ->where('any', '.*');
     }
 
@@ -87,11 +102,41 @@ class EvoServiceProvider extends ServiceProvider
     {
         foreach (glob(__DIR__ . '/../Models/*') as $file) {
             $class = basename($file, '.php');
-            class_alias('\Team64j\\LaravelEvolution\\Models\\' . $class, 'EvolutionCMS\\Models\\' . $class);
+            class_alias('\Team64j\LaravelEvolution\Models\\' . $class, 'EvolutionCMS\Models\\' . $class);
         }
 
-        class_alias('\Team64j\\LaravelEvolution\\Evo', '\DocumentParser');
-        class_alias('\Team64j\\LaravelEvolution\\Legacy\\Parser', '\DLTemplate');
-        class_alias('\Team64j\\LaravelEvolution\\Legacy\\Event', '\SystemEvent');
+        class_alias('\Team64j\LaravelEvolution\Evo', '\DocumentParser');
+        class_alias('\Team64j\LaravelEvolution\Legacy\Parser', '\DLTemplate');
+        class_alias('\Team64j\LaravelEvolution\Legacy\Event', '\SystemEvent');
+        class_alias('\Team64j\LaravelEvolution\Legacy\ManagerTheme', '\ManagerTheme');
+        class_alias('\Team64j\LaravelEvolution\Facades\UrlProcessor', '\UrlProcessor');
+        class_alias('\Team64j\LaravelEvolution\Facades\AuthServices', '\EvolutionCMS\Facades\AuthServices');
+        class_alias('\Team64j\LaravelEvolution\Facades\HelperProcessor', '\EvolutionCMS\Facades\HelperProcessor');
+        class_alias('\Team64j\LaravelEvolution\Providers\ServiceProvider', '\EvolutionCMS\ServiceProvider');
+        class_alias('\Team64j\LaravelEvolution\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
+    }
+
+    protected function registerShutdown()
+    {
+        session()->save();
+    }
+
+    protected function bladeDirectives(): void
+    {
+        $directives = require __DIR__ . '/../../config/view.php';
+
+        if (is_array($directives)) {
+            foreach ($directives as $name => $callback) {
+                $this->app->get('blade.compiler')->directive($name, $callback);
+            }
+        }
+
+        Blade::if('auth', function (string $context = 'web') {
+            return EvolutionCMS()->getLoginUserID($context) !== false;
+        });
+
+        Blade::if('guest', function (string $context = 'web') {
+            return EvolutionCMS()->getLoginUserID($context) === false;
+        });
     }
 }

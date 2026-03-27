@@ -128,6 +128,10 @@ trait Settings
         //            return $this->config = $config;
         //        }
 
+        if (!Cache::has('config.global')) {
+            new \Team64j\LaravelEvolution\Legacy\Cache($this)->buildCache();
+        }
+
         $this->config = Cache::rememberForever(
             'config.global',
             function () {
@@ -136,7 +140,8 @@ trait Settings
                     $this->config,
                     SystemSetting::query()
                         ->pluck('setting_value', 'setting_name')
-                        ->toArray()
+                        ->toArray(),
+                    $this->getCustomSettings(),
                 );
 
                 // setup default site id - new installation should generate a unique id for the site.
@@ -191,6 +196,17 @@ trait Settings
         $out = include EVO_CORE_PATH . 'factory/settings.php';
 
         return \is_array($out) ? $out : [];
+    }
+
+    public function getCustomSettings(): array
+    {
+        if (file_exists($file = EVO_CORE_PATH . 'custom/config/cms/settings.php')) {
+            $out = include $file;
+
+            return \is_array($out) ? $out : [];
+        }
+
+        return [];
     }
 
     /**
