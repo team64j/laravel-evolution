@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
 class ManagerTheme
 {

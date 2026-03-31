@@ -21,13 +21,13 @@
       "src/helpers.php"
     ],
     "psr-4": {
-      "Team64j\\LaravelEvolution\\": "src"
+      "EvolutionCMS\\": "src"
     }
   },
   "extra": {
     "laravel": {
       "providers": [
-        "Team64j\\LaravelEvolution\\Providers\\EvoServiceProvider"
+        "EvolutionCMS\\Providers\\EvoServiceProvider"
       ]
     }
   }

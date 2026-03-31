@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Facades;
+namespace EvolutionCMS\Facades;
 
 use Illuminate\Support\Facades\Facade;
 

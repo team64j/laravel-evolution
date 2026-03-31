@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Providers;
+namespace EvolutionCMS\Providers;
 
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Config;
@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use Team64j\LaravelEvolution\Evo;
-use Team64j\LaravelEvolution\Legacy;
+use EvolutionCMS\Evo;
+use EvolutionCMS\Legacy;
 
 class EvoServiceProvider extends ServiceProvider
 {
@@ -53,8 +53,8 @@ class EvoServiceProvider extends ServiceProvider
 
         register_shutdown_function([$this, 'registerShutdown']);
 
-        //        $this->app->singleton('evo.auth', fn() => new \Team64j\LaravelEvolution\Facades\AuthServices());
-        //        $this->app->alias('evo.auth', \Team64j\LaravelEvolution\Facades\AuthServices::class);
+        //        $this->app->singleton('evo.auth', fn() => new \EvolutionCMS\Facades\AuthServices());
+        //        $this->app->alias('evo.auth', \EvolutionCMS\Facades\AuthServices::class);
     }
 
     /**
@@ -104,20 +104,13 @@ class EvoServiceProvider extends ServiceProvider
 
     protected function registerLegacyAliases(): void
     {
-        foreach (glob(__DIR__ . '/../Models/*') as $file) {
-            $class = basename($file, '.php');
-            class_alias('\Team64j\LaravelEvolution\Models\\' . $class, 'EvolutionCMS\Models\\' . $class);
-        }
-
-        class_alias('\Team64j\LaravelEvolution\Evo', '\DocumentParser');
-        class_alias('\Team64j\LaravelEvolution\Legacy\Parser', '\DLTemplate');
-        class_alias('\Team64j\LaravelEvolution\Legacy\Event', '\SystemEvent');
-        class_alias('\Team64j\LaravelEvolution\Legacy\ManagerTheme', '\ManagerTheme');
-        class_alias('\Team64j\LaravelEvolution\Facades\UrlProcessor', '\UrlProcessor');
-        class_alias('\Team64j\LaravelEvolution\Facades\AuthServices', '\EvolutionCMS\Facades\AuthServices');
-        class_alias('\Team64j\LaravelEvolution\Facades\HelperProcessor', '\EvolutionCMS\Facades\HelperProcessor');
-        class_alias('\Team64j\LaravelEvolution\Providers\ServiceProvider', '\EvolutionCMS\ServiceProvider');
-        class_alias('\Team64j\LaravelEvolution\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
+        class_alias('\EvolutionCMS\Evo', '\DocumentParser');
+        class_alias('\EvolutionCMS\Legacy\Parser', '\DLTemplate');
+        class_alias('\EvolutionCMS\Legacy\Event', '\SystemEvent');
+        class_alias('\EvolutionCMS\Legacy\ManagerTheme', '\ManagerTheme');
+        class_alias('\EvolutionCMS\Facades\UrlProcessor', '\UrlProcessor');
+        class_alias('\EvolutionCMS\Providers\ServiceProvider', '\EvolutionCMS\ServiceProvider');
+        class_alias('\EvolutionCMS\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
     }
 
     protected function registerShutdown(): void

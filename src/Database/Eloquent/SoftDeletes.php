@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Database\Eloquent;
+namespace EvolutionCMS\Database\Eloquent;
 
 use Illuminate\Database\Eloquent\SoftDeletes as BaseSoftDeletes;
 

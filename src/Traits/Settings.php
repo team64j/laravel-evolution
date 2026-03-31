@@ -1,10 +1,10 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Traits;
+namespace EvolutionCMS\Traits;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Team64j\LaravelEvolution\Models\SystemSetting;
+use EvolutionCMS\Models\SystemSetting;
 
 trait Settings
 {
@@ -129,7 +129,7 @@ trait Settings
         //        }
 
         if (!Cache::has('config.global')) {
-            new \Team64j\LaravelEvolution\Legacy\Cache($this)->buildCache();
+            new \EvolutionCMS\Legacy\Cache($this)->buildCache();
         }
 
         $this->config = Cache::rememberForever(

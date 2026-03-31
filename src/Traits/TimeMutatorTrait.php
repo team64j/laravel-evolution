@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Traits;
+namespace EvolutionCMS\Traits;
 
 use DateTimeInterface;
 use Illuminate\Support\Facades\Config;

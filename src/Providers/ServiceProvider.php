@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Providers;
+namespace EvolutionCMS\Providers;
 
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 

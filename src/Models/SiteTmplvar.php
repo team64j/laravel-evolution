@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Models;
+namespace EvolutionCMS\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
-use Team64j\LaravelEvolution\Traits\LockedTrait;
+use EvolutionCMS\Traits\LockedTrait;
 
 /**
  * @property int $id

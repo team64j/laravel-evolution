@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
 class Event
 {

@@ -1,5 +1,7 @@
 <?php
 
+use EvolutionCMS\Legacy\Parser;
+
 if (!function_exists('evolutionCMS')) {
     /**
      * @return DocumentParser
@@ -26,7 +28,7 @@ if (!function_exists('evo_parser')) {
      *
      * @return mixed|string
      */
-    function evo_parser($content)
+    function evo_parser($content): mixed
     {
         $core = evo();
         $minParserPasses = $core->minParserPasses;
@@ -35,7 +37,7 @@ if (!function_exists('evo_parser')) {
         $core->minParserPasses = 2;
         $core->maxParserPasses = 10;
 
-        $out = \Team64j\LaravelEvolution\Legacy\Parser::getInstance($core)->parseDocumentSource($content, $core);
+        $out = Parser::getInstance($core)->parseDocumentSource($content, $core);
 
         $core->minParserPasses = $minParserPasses;
         $core->maxParserPasses = $maxParserPasses;

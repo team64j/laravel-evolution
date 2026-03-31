@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Models;
+namespace EvolutionCMS\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
+use EvolutionCMS\Traits\TimeMutatorTrait;
 
 /**
  * @property int $id

@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Traits;
+namespace EvolutionCMS\Traits;
 
 use Carbon\Carbon;
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Models;
+namespace EvolutionCMS\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
+use EvolutionCMS\Traits\TimeMutatorTrait;
 
 /**
  * @property int $action

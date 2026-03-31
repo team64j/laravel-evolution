@@ -1,8 +1,8 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Services;
+namespace EvolutionCMS\Services;
 
-use Team64j\LaravelEvolution\Models\User;
+use EvolutionCMS\Models\User;
 
 class AuthServices
 {

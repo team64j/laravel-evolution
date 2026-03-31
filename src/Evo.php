@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution;
+namespace EvolutionCMS;
 
 use Exception;
 use FilesystemIterator;
@@ -20,19 +20,19 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 use stdClass;
-use Team64j\LaravelEvolution\Legacy\DeprecatedCore;
-use Team64j\LaravelEvolution\Legacy\Event;
-use Team64j\LaravelEvolution\Models\DocumentGroup;
-use Team64j\LaravelEvolution\Models\DocumentgroupName;
-use Team64j\LaravelEvolution\Models\EventLog;
-use Team64j\LaravelEvolution\Models\SiteContent;
-use Team64j\LaravelEvolution\Models\SitePlugin;
-use Team64j\LaravelEvolution\Models\SiteSnippet;
-use Team64j\LaravelEvolution\Models\SiteTemplate;
-use Team64j\LaravelEvolution\Models\SiteTmplvar;
-use Team64j\LaravelEvolution\Models\SiteTmplvarContentvalue;
-use Team64j\LaravelEvolution\Models\SiteTmplvarTemplate;
-use Team64j\LaravelEvolution\Models\User;
+use EvolutionCMS\Legacy\DeprecatedCore;
+use EvolutionCMS\Legacy\Event;
+use EvolutionCMS\Models\DocumentGroup;
+use EvolutionCMS\Models\DocumentgroupName;
+use EvolutionCMS\Models\EventLog;
+use EvolutionCMS\Models\SiteContent;
+use EvolutionCMS\Models\SitePlugin;
+use EvolutionCMS\Models\SiteSnippet;
+use EvolutionCMS\Models\SiteTemplate;
+use EvolutionCMS\Models\SiteTmplvar;
+use EvolutionCMS\Models\SiteTmplvarContentvalue;
+use EvolutionCMS\Models\SiteTmplvarTemplate;
+use EvolutionCMS\Models\User;
 
 class Evo
 {
@@ -339,7 +339,7 @@ class Evo
         $this->initialize();
 
         if (app()->runningInConsole()) {
-            abort(500, 'Call DocumentParser::executeParser on CLI mode');
+            abort(500, 'Call Evo::executeParser on CLI mode');
         }
 
         $this->_IIS_furl_fix(); // IIS friendly url fix

@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Facades;
+namespace EvolutionCMS\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static string|null strictURI(string $query, int $id)
  * @method static makeUrlWithString($id)
  *
- * @see \Team64j\LaravelEvolution\Legacy\UrlProcessor
+ * @see \EvolutionCMS\Legacy\UrlProcessor
  */
 class UrlProcessor extends Facade
 {

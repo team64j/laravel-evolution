@@ -1,14 +1,14 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\View\Factory;
 use Illuminate\View\FileViewFinder;
-use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
-use Team64j\LaravelEvolution\Models\SiteTemplate;
+use EvolutionCMS\Models\SiteHtmlSnippet;
+use EvolutionCMS\Models\SiteTemplate;
 
 /**
  */

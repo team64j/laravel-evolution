@@ -1,15 +1,15 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
-use Team64j\LaravelEvolution\Evo;
-use Team64j\LaravelEvolution\Models\SiteContent;
-use Team64j\LaravelEvolution\Models\SiteHtmlSnippet;
-use Team64j\LaravelEvolution\Models\SitePlugin;
-use Team64j\LaravelEvolution\Models\SiteSnippet;
-use Team64j\LaravelEvolution\Models\SystemEventname;
-use Team64j\LaravelEvolution\Models\SystemSetting;
-use Team64j\LaravelEvolution\Models\UserSetting;
+use EvolutionCMS\Evo;
+use EvolutionCMS\Models\SiteContent;
+use EvolutionCMS\Models\SiteHtmlSnippet;
+use EvolutionCMS\Models\SitePlugin;
+use EvolutionCMS\Models\SiteSnippet;
+use EvolutionCMS\Models\SystemEventname;
+use EvolutionCMS\Models\SystemSetting;
+use EvolutionCMS\Models\UserSetting;
 
 class Cache
 {    

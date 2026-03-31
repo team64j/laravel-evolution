@@ -1,16 +1,16 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
-use DocumentParser;
+use EvolutionCMS\Evo;
 use Illuminate\Support\Str;
-use Team64j\LaravelEvolution\Legacy;
-use Team64j\LaravelEvolution\Models\SiteContent;
+use EvolutionCMS\Legacy;
+use EvolutionCMS\Models\SiteContent;
 
 class UrlProcessor
 {
     /**
-     * @var DocumentParser
+     * @var Evo
      */
     protected $core;
 

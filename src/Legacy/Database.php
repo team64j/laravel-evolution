@@ -1,6 +1,6 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
 use Exception;
 use Illuminate\Container\Container;

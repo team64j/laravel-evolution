@@ -1,8 +1,8 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Facades;
+namespace EvolutionCMS\Facades;
 
-use Team64j\LaravelEvolution\Models\User;
+use EvolutionCMS\Models\User;
 use Illuminate\Support\Facades\Facade;
 
 /**
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static User login($user, bool $remember = false)
  * @method static User loginUsingId($userId, bool $remember = false)
  *
- * @see \Team64j\LaravelEvolution\Services\AuthServices
+ * @see \EvolutionCMS\Services\AuthServices
  */
 class AuthServices  extends Facade
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Team64j\LaravelEvolution\Models;
+namespace EvolutionCMS\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,8 +13,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Lang;
-use Team64j\LaravelEvolution\Database\Eloquent\SoftDeletes;
-use Team64j\LaravelEvolution\Traits\TimeMutatorTrait;
+use EvolutionCMS\Database\Eloquent\SoftDeletes;
+use EvolutionCMS\Traits\TimeMutatorTrait;
 
 /**
  * @property int $id

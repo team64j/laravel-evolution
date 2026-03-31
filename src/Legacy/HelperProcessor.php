@@ -1,14 +1,14 @@
 <?php
 
-namespace Team64j\LaravelEvolution\Legacy;
+namespace EvolutionCMS\Legacy;
 
-use DocumentParser;
+use EvolutionCMS\Evo;
 use WebPConvert\WebPConvert;
 
 class HelperProcessor
 {
     /**
-     * @var DocumentParser
+     * @var Evo
      */
     protected $core;
 
