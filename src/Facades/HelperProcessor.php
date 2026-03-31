@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static string makeFilePath($newFilename, $pathinfo, $params)
  * @method static string phpThumb($input = '', $options = '', $webp = true)
  *
- * @see \EvolutionCMS\HelperProcessor
+ * @see \EvolutionCMS\Legacy\HelperProcessor
  */
 class HelperProcessor extends Facade
 {

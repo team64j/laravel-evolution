@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Facade;
  *
  * @see \EvolutionCMS\Services\AuthServices
  */
-class AuthServices  extends Facade
+class AuthServices extends Facade
 {
     /**
      * Get the registered name of the component.

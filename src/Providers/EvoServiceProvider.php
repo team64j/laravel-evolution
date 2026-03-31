@@ -48,8 +48,8 @@ class EvoServiceProvider extends ServiceProvider
         $this->app->singleton('evo.deprecated', fn() => new Legacy\DeprecatedCore());
         $this->app->alias('evo.deprecated', Legacy\DeprecatedCore::class);
 
-        $this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
-        $this->app->alias('evo.ManagerTheme', Legacy\ManagerTheme::class);
+        //$this->app->singleton('evo.ManagerTheme', fn() => new Legacy\ManagerTheme());
+        //$this->app->alias('evo.ManagerTheme', Legacy\ManagerTheme::class);
 
         register_shutdown_function([$this, 'registerShutdown']);
 

@@ -4,7 +4,6 @@ namespace EvolutionCMS\Legacy;
 
 class BladeDirective
 {
-
     public static function evoParser($content): string
     {
         return '<?php echo evo_parser(' . $content . ');?>';
@@ -12,7 +11,7 @@ class BladeDirective
 
     public static function evoLang($key): string
     {
-        return '<?php echo ManagerTheme::getLexicon(' . $key . ');?>';
+        return '<?php echo __("global."' . $key . ');?>';
     }
 
     public static function evoStyle($key): string
