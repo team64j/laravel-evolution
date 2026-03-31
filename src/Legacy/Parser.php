@@ -2,7 +2,6 @@
 
 namespace Team64j\LaravelEvolution\Legacy;
 
-use DocumentParser;
 use Exception;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Filesystem\Filesystem;
@@ -15,12 +14,6 @@ use Team64j\LaravelEvolution\Models\SiteTemplate;
  */
 class Parser
 {
-    /**
-     * @var DocumentParser $core
-     * @access protected
-     */
-    protected DocumentParser $core;
-
     /**
      * @var Parser|null cached reference to singleton instance
      */
@@ -63,7 +56,6 @@ class Parser
      */
     public function __construct($core = null)
     {
-        $this->core = $core ?? evo();
         $this->loadBlade();
     }
 
@@ -172,9 +164,9 @@ class Parser
      */
     public function getTemplateData(array $data = []): array
     {
-        $plh = array_merge($this->core->getDataForView(), $this->templateData);
+        $plh = array_merge(evo()->getDataForView(), $this->templateData);
         $plh['data'] = $data;
-        $plh['modx'] = $this->core;
+        $plh['modx'] = evo();
 
         return $plh;
     }
@@ -193,7 +185,7 @@ class Parser
     {
         $out = '';
         if ($set != 0) {
-            $this->core->toPlaceholder($key, $data, $prefix);
+            evo()->toPlaceholder($key, $data, $prefix);
         } else {
             $out = $data;
         }
@@ -206,14 +198,14 @@ class Parser
      *
      * @param string $name Template: chunk name || @CODE: template || @FILE: file with template
      *
-     * @return string|null html template with placeholders without data
+     * @return string|object|null HTML template with placeholders without data
      */
-    public function getChunk(string $name): null|string|object
+    public function getChunk(string $name): null | string | object
     {
         $tpl = '';
         $ext = null;
         $this->bladeEnabled = str_starts_with($name, '@B_');//(0 === strpos($name, '@B_'));
-        if ($name != '' && !isset($this->core->chunkCache[$name])) {
+        if ($name != '' && !isset(evo()->chunkCache[$name])) {
             $mode = (preg_match(
                     '/^((@[A-Z_]+)[:]{0,1})(.*)/Asu',
                     trim($name),
@@ -233,7 +225,7 @@ class Parser
                     break;
                 case '@B_CODE':
                     $cache = md5($name) . '-' . sha1($subTmp);
-                    $filesystem = $this->core['filesystem']->drive('storage');
+                    $filesystem = evo()['filesystem']->drive('storage');
                     if (!$filesystem->exists('blade/' . $cache . '.blade.php')) {
                         $filesystem->put('blade/' . $cache . '.blade.php', $subTmp);
                     }
@@ -264,30 +256,30 @@ class Parser
                 case '@DOC':
                     switch (true) {
                         case ((int) $subTmp > 0):
-                            $tpl = $this->core->getPageInfo((int) $subTmp, 0, "content");
+                            $tpl = evo()->getPageInfo((int) $subTmp, 0, "content");
                             $tpl = $tpl['content'] ?? '';
                             break;
                         case ((int) $subTmp == 0):
-                            $tpl = $this->core->documentObject['content'];
+                            $tpl = evo()->documentObject['content'];
                             break;
                     }
                     break;
                 case '@PLH':
                 case '@PLACEHOLDER':
                     if ($subTmp != '') {
-                        $tpl = $this->core->getPlaceholder($subTmp);
+                        $tpl = evo()->getPlaceholder($subTmp);
                     }
                     break;
                 case '@CFG':
                 case '@CONFIG':
                 case '@OPTIONS':
                     if ($subTmp != '') {
-                        $tpl = $this->core->getConfig($subTmp);
+                        $tpl = evo()->getConfig($subTmp);
                     }
                     break;
                 case '@SNIPPET':
                     if ($subTmp != '') {
-                        $tpl = $this->core->runSnippet($subTmp, $this->core->event->params);
+                        $tpl = evo()->runSnippet($subTmp, evo()->event->params);
                     }
                     break;
                 case '@RENDERPAGE':
@@ -305,7 +297,7 @@ class Parser
                 default:
                     $tpl = $this->getBaseChunk($name);
             }
-            $this->core->chunkCache[$name] = $tpl;
+            evo()->chunkCache[$name] = $tpl;
         } else {
             $tpl = $this->getBaseChunk($name);
         }
@@ -323,8 +315,8 @@ class Parser
             return '';
         }
 
-        if (array_key_exists($name, $this->core->chunkCache)) {
-            $tpl = $this->core->chunkCache[$name];
+        if (array_key_exists($name, evo()->chunkCache)) {
+            $tpl = evo()->chunkCache[$name];
         } else {
             $chunk = SiteHtmlsnippet::query()
                 ->where('name', $name)
@@ -332,7 +324,7 @@ class Parser
                 ->get();
 
             $tpl = ($chunk->count() === 1) ? $chunk->first()->snippet : '';
-            $this->core->chunkCache[$name] = $tpl;
+            evo()->chunkCache[$name] = $tpl;
         }
 
         return $tpl;
@@ -354,13 +346,13 @@ class Parser
      *       - с источиком от куда произошел вызов события
      *       - оригинальный экземпляр класса Core
      */
-    public function renderDoc(int $id, bool $events = false, mixed $tpl = null)
+    public function renderDoc(int $id, bool $events = false, mixed $tpl = null): string
     {
         if ($id <= 0) {
             return '';
         }
 
-        $m = clone $this->core; //Чтобы была возможность вызывать события
+        $m = clone evo(); //Чтобы была возможность вызывать события
         $m->documentIdentifier = $id;
         $m->documentObject = $m->getDocumentObject('id', $id, $events ? 'prepareResponse' : null);
         if ($m->documentObject['type'] === 'reference') {
@@ -382,7 +374,7 @@ class Parser
         if ($events) {
             $m->invokeEvent("OnLoadWebDocument", [
                 'source'   => 'DLTemplate',
-                'mainModx' => $this->core,
+                'mainModx' => evo(),
             ]);
         }
 
@@ -416,11 +408,12 @@ class Parser
      *
      * @param string $name Template: chunk name || @CODE: template || @FILE: file with template
      * @param array $data paceholder
-     * @param bool $parseDocumentSource render html template via Core::parseDocumentSource()
+     * @param bool $parseDocumentSource render HTML template via Core::parseDocumentSource()
+     * @param bool $disablePHx
      *
-     * @return string html template with data without placeholders
+     * @return object|string|null HTML template with data without placeholders
      */
-    public function parseChunk($name, array $data = [], bool $parseDocumentSource = false, $disablePHx = false)
+    public function parseChunk($name, array $data = [], bool $parseDocumentSource = false, $disablePHx = false): object | string | null
     {
         $out = $this->getChunk($name);
         $blade = str_starts_with($name, '@B_') && $this->bladeEnabled;
@@ -458,7 +451,7 @@ class Parser
      * @param string $key
      * @param string $path
      */
-    public function setPHxPlaceholders($value = '', $key = '', $path = '')
+    public function setPHxPlaceholders($value, $key = '', $path = ''): void
     {
         $keypath = !empty($path) ? $path . "." . $key : $key;
         $this->phx->curPass = 0;
@@ -474,12 +467,12 @@ class Parser
     /**
      *
      */
-    protected function loadBlade()
+    protected function loadBlade(): void
     {
         try {
             $this->blade = clone app('view');
         } catch (Exception $exception) {
-            $this->core->messageQuit($exception->getMessage());
+            evo()->messageQuit($exception->getMessage());
         }
     }
 
@@ -502,7 +495,7 @@ class Parser
      *
      * @return string
      */
-    public function cleanPHx($string)
+    public function cleanPHx(string $string): string
     {
         preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s', $string, $matches);
         if ($matches[0]) {
@@ -518,13 +511,13 @@ class Parser
      *
      * @return Phx
      */
-    public function createPHx($debug = 0, $maxpass = 50)
+    public function createPHx($debug = 0, $maxpass = 50): Phx
     {
-        return new Phx($this->core, $debug, $maxpass);
+        return new Phx(evo(), $debug, $maxpass);
     }
 
     /**
-     * Переменовывание элементов массива
+     * Переименовывание элементов массива
      *
      * @param array $data массив с данными
      * @param string $prefix префикс ключей
@@ -533,7 +526,7 @@ class Parser
      *
      * @return array массив с переименованными ключами
      */
-    public function renameKeyArr($data, $prefix = '', $suffix = '', $sep = '.')
+    public function renameKeyArr($data, $prefix = '', $suffix = '', $sep = '.'): array
     {
         return rename_key_arr($data, $prefix, $suffix, $sep);
     }
@@ -547,7 +540,7 @@ class Parser
     public function parseDocumentSource($out, $modx = null): mixed
     {
         if (!is_object($modx)) {
-            $modx = $this->core;
+            $modx = evo();
         }
         $minParserPasses = $modx->minParserPasses;
         $maxParserPasses = $modx->maxParserPasses;
@@ -587,7 +580,7 @@ class Parser
     public function getBladeDocumentContent()
     {
         $template = false;
-        $doc = $this->core->documentObject;
+        $doc = evo()->documentObject;
         $templateController = null;
         if (isset($doc['templatealias']) && $doc['templatealias'] != '') {
             $templateAlias = $doc['templatealias'];
@@ -616,19 +609,19 @@ class Parser
                 $template = 'tpl-' . $doc['template'];
                 break;
             case view()->exists($templateAlias):
-                $namespace = trim($this->core->getConfig('ControllerNamespace', '') ?: '');
+                $namespace = trim(evo()->getConfig('ControllerNamespace', '') ?: '');
                 if (!empty($namespace)) {
-                    if(!empty($templateController) && class_exists($namespace . $templateController)) {
+                    if (!empty($templateController) && class_exists($namespace . $templateController)) {
                         if (isset($doc['id'])) {
-                            $documentObject = $this->core->makeDocumentObject($doc['id']);
+                            $documentObject = evo()->makeDocumentObject($doc['id']);
                             $data = [
-                                'modx' => $this->core,
+                                'modx'           => evo(),
                                 'documentObject' => $documentObject,
                             ];
-                            $this->core->addDataToView($documentObject);
+                            evo()->addDataToView($documentObject);
                         } else {
                             $data = [
-                                'modx' => $this->core,
+                                'modx'           => evo(),
                                 'documentObject' => [],
                             ];
                         }
@@ -638,12 +631,12 @@ class Parser
                         $controller->setView($templateAlias);
                         $controller->addViewData($data);
                         $controller->process();
-                        $this->core->addDataToView($controller->getViewData());
+                        evo()->addDataToView($controller->getViewData());
                         $view = $controller->getView();
-                        if(!empty($view)) {
+                        if (!empty($view)) {
                             $templateAlias = $view;
                         }
-                    } elseif($this->core['view']->exists($templateAlias)) {
+                    } elseif (evo()['view']->exists($templateAlias)) {
                         $baseClassName = $namespace . 'BaseController';
                         if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
                             $classArray = explode('.', $templateAlias);
@@ -658,57 +651,58 @@ class Parser
                             $className = $namespace . ucfirst($className) . 'Controller';
                             if (!class_exists(
                                 $className
-                            )) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
+                            )
+                            ) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
                                 $className = $baseClassName;
                             }
-                            $controller = $this->core->make($className);
+                            $controller = evo()->make($className);
                             if (method_exists($controller, 'main')) {
-                                $this->core->call([$controller, 'main']);
+                                evo()->call([$controller, 'main']);
                             }
                         } else {
-                            $this->core->logEvent(0, 3, $baseClassName . ' not exists!');
+                            evo()->logEvent(0, 3, $baseClassName . ' not exists!');
                         }
                     }
-//                    $baseClassName = $namespace . 'BaseController';
-//                    if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
-//                        $classArray = explode('.', $templateAlias);
-//                        $classArray = array_map(
-//                            function ($item) {
-//                                return $this->setPsrClassNames($item);
-//                            },
-//                            $classArray
-//                        );
-//                        $classViewPart = implode('.', $classArray);
-//                        $className = str_replace('.', '\\', $classViewPart);
-//                        $className = $namespace . ucfirst($className) . 'Controller';
-//                        if (!class_exists(
-//                            $className
-//                        )
-//                        ) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
-//                            $className = $baseClassName;
-//                        }
-//                        dd($className);
-//                        $controller = app()->make($className);
-//                        if (method_exists($controller, 'main')) {
-//                            app()->call([$controller, 'main']);
-//                        }
-//                        $this->core->addDataToView($controller->getViewData());
-//                    } else {
-//                        $this->core->logEvent(0, 3, $baseClassName . ' not exists!');
-//                    }
+                    //                    $baseClassName = $namespace . 'BaseController';
+                    //                    if (class_exists($baseClassName)) { //Проверяем есть ли Base класс
+                    //                        $classArray = explode('.', $templateAlias);
+                    //                        $classArray = array_map(
+                    //                            function ($item) {
+                    //                                return $this->setPsrClassNames($item);
+                    //                            },
+                    //                            $classArray
+                    //                        );
+                    //                        $classViewPart = implode('.', $classArray);
+                    //                        $className = str_replace('.', '\\', $classViewPart);
+                    //                        $className = $namespace . ucfirst($className) . 'Controller';
+                    //                        if (!class_exists(
+                    //                            $className
+                    //                        )
+                    //                        ) { //Проверяем есть ли контроллер по алиасу, если нет, то помещаем Base
+                    //                            $className = $baseClassName;
+                    //                        }
+                    //                        dd($className);
+                    //                        $controller = app()->make($className);
+                    //                        if (method_exists($controller, 'main')) {
+                    //                            app()->call([$controller, 'main']);
+                    //                        }
+                    //                        evo()->addDataToView($controller->getViewData());
+                    //                    } else {
+                    //                        evo()->logEvent(0, 3, $baseClassName . ' not exists!');
+                    //                    }
                 }
                 $template = $templateAlias;
                 break;
             default:
-                $content = $doc['template'] ? $this->core->documentContent : $doc['content'];
+                $content = $doc['template'] ? evo()->documentContent : $doc['content'];
                 if (!$content) {
                     $content = $doc['content'];
                 }
                 if (str_starts_with($content, '@FILE:')) {
                     $template = str_replace('@FILE:', '', trim($content));
                     if (!view()->exists($template)) {
-                        $this->core->documentObject['template'] = 0;
-                        $this->core->documentContent = $doc['content'];
+                        evo()->documentObject['template'] = 0;
+                        evo()->documentContent = $doc['content'];
                     }
                 }
         }

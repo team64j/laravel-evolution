@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Team64j\LaravelEvolution\Evo;
 use Team64j\LaravelEvolution\Legacy;
 
@@ -15,6 +17,8 @@ class EvoServiceProvider extends ServiceProvider
 {
     /**
      * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function register(): void
     {
@@ -116,11 +120,15 @@ class EvoServiceProvider extends ServiceProvider
         class_alias('\Team64j\LaravelEvolution\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
     }
 
-    protected function registerShutdown()
+    protected function registerShutdown(): void
     {
         session()->save();
     }
 
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     */
     protected function bladeDirectives(): void
     {
         $directives = require __DIR__ . '/../../config/view.php';

@@ -1,14 +1,16 @@
-<?php namespace Team64j\LaravelEvolution\Legacy;
+<?php
 
+namespace Team64j\LaravelEvolution\Legacy;
+
+use DocumentParser;
 use WebPConvert\WebPConvert;
 
 class HelperProcessor
 {
     /**
-     * @var Interfaces\CoreInterface
+     * @var DocumentParser
      */
     protected $core;
-
 
     public function __construct()
     {
@@ -20,7 +22,7 @@ class HelperProcessor
         return $pathinfo['filename'];
     }
 
-    protected function makeFilePath($newFilename, $pathinfo, $params)
+    protected function makeFilePath($newFilename, $pathinfo, $params): array | string
     {
         return str_replace('assets/images', '', $pathinfo['dirname']);
     }
@@ -29,13 +31,14 @@ class HelperProcessor
      * @param string $input
      * @param string $options
      * @param bool|array $params boolean value here means webp = true or false for backward compatibility
+     *
      * @return string
      */
     public function phpThumb($input = '', $options = '', $params = true)
     {
-        if(is_bool($params)) {
+        if (is_bool($params)) {
             $params = ['webp' => $params];
-        } elseif(!is_array($params)) {
+        } elseif (!is_array($params)) {
             $params = ['webp' => true];
         }
 
@@ -67,20 +70,24 @@ class HelperProcessor
         /**
          * allow read in phpthumb cache folder
          */
-        if (!file_exists(MODX_BASE_PATH . $cacheFolder . '/.htaccess') &&
-            $cacheFolder !== $defaultCacheFolder &&
-            strpos($cacheFolder, $defaultCacheFolder) === 0
+        if (!file_exists(MODX_BASE_PATH . $cacheFolder . '/.htaccess') && $cacheFolder !== $defaultCacheFolder
+            && strpos($cacheFolder, $defaultCacheFolder) === 0
         ) {
-            file_put_contents(MODX_BASE_PATH . $cacheFolder . '/.htaccess', "<ifModule mod_authz_core.c>\nRequire all granted\n</ifModule>\n<ifModule !mod_authz_core.c>\norder deny,allow\nallow from all\n</ifModule>\n");
+            file_put_contents(
+                MODX_BASE_PATH . $cacheFolder . '/.htaccess',
+                "<ifModule mod_authz_core.c>\nRequire all granted\n</ifModule>\n<ifModule !mod_authz_core.c>\norder deny,allow\nallow from all\n</ifModule>\n"
+            );
         }
 
         $path_parts = pathinfo($input);
         $ext = strtolower($path_parts['extension']);
 
-        if($ext == 'svg') return $input;
+        if ($ext == 'svg') {
+            return $input;
+        }
 
-        $options = 'f=' . (in_array($ext, array('png', 'gif', 'jpeg')) ? $ext : 'jpg&q=85') . '&' .
-            strtr($options, array(',' => '&', '_' => '=', '{' => '[', '}' => ']'));
+        $options = 'f=' . (in_array($ext, ['png', 'gif', 'jpeg']) ? $ext : 'jpg&q=85') . '&' .
+            strtr($options, [',' => '&', '_' => '=', '{' => '[', '}' => ']']);
 
         parse_str($options, $params);
 
@@ -100,7 +107,7 @@ class HelperProcessor
         }
 
         $fmtime = '';
-        if(isset($filemtime)){
+        if (isset($filemtime)) {
             $fmtime = filemtime(MODX_BASE_PATH . $input);
         }
 
@@ -131,7 +138,12 @@ class HelperProcessor
         }
 
         if (isset($params['webp']) && $params['webp'] && class_exists('\WebPConvert\WebPConvert')) {
-            if( isset( $_SERVER['HTTP_ACCEPT'] ) && strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) !== false && pathinfo($outputFilename, PATHINFO_EXTENSION) != 'gif') {
+            if (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'image/webp') !== false
+                && pathinfo(
+                    $outputFilename,
+                    PATHINFO_EXTENSION
+                ) != 'gif'
+            ) {
                 if (file_exists($outputFilename . '.webp')) {
                     $fNameSuf .= '.webp';
                 } else {

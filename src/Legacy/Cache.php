@@ -444,21 +444,22 @@ class Cache
         // invoke OnBeforeCacheUpdate event
         $this->core->invokeEvent('OnBeforeCacheUpdate');
 
-        if (!is_dir(dirname($filename))) {
-            mkdir(dirname($filename), 0755, true);
-        }
+        \Illuminate\Support\Facades\Cache::forever($filename, $content);
 
-        //        \Illuminate\Support\Facades\Cache::forever($filename, $content);
-        if (@file_put_contents($filename, $content) === false) {
-            exit("Cannot write $filename! Make sure file or its directory is writable!");
-        }
-
-        if (is_dir(MODX_BASE_PATH . '/assets/cache') && !is_file(MODX_BASE_PATH . '/assets/cache/.htaccess')) {
-            file_put_contents(
-                MODX_BASE_PATH . '/assets/cache/.htaccess',
-                "<ifModule mod_authz_core.c>\nRequire all denied\n</ifModule>\n<ifModule !mod_authz_core.c>\norder deny,allow\ndeny from all\n</ifModule>\n"
-            );
-        }
+//        if (!is_dir(dirname($filename))) {
+//            mkdir(dirname($filename), 0755, true);
+//        }
+//
+//        if (@file_put_contents($filename, $content) === false) {
+//            exit("Cannot write $filename! Make sure file or its directory is writable!");
+//        }
+//
+//        if (is_dir(MODX_BASE_PATH . '/assets/cache') && !is_file(MODX_BASE_PATH . '/assets/cache/.htaccess')) {
+//            file_put_contents(
+//                MODX_BASE_PATH . '/assets/cache/.htaccess',
+//                "<ifModule mod_authz_core.c>\nRequire all denied\n</ifModule>\n<ifModule !mod_authz_core.c>\norder deny,allow\ndeny from all\n</ifModule>\n"
+//            );
+//        }
 
         // invoke OnCacheUpdate event
         $this->core->invokeEvent('OnCacheUpdate');

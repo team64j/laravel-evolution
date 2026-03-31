@@ -6,7 +6,7 @@ namespace Team64j\LaravelEvolution\Legacy;
 
 class ManagerTheme
 {
-    public function getActionId()
+    public function getActionId(): null
     {
         return null;
     }
@@ -16,7 +16,7 @@ class ManagerTheme
         return __('global.' . $key) ?? $default;
     }
 
-    static public function getLang()
+    static public function getLang(): array | string | null
     {
         return __();
     }

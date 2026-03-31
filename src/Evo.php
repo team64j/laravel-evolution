@@ -83,7 +83,7 @@ class Evo
     protected array $evolutionProperty = [
         'db' => 'getDatabase',
     ];
-    public $loadedjscripts = [];
+    public array $loadedjscripts = [];
 
     /**
      * @var array
@@ -509,8 +509,12 @@ class Evo
 
         $siteCachePath = $this->getSiteCacheFilePath();
 
-        if (is_file($siteCachePath)) {
-            include $siteCachePath;
+//        if (is_file($siteCachePath)) {
+//            include $siteCachePath;
+//        }
+
+        if (Cache::has($siteCachePath)) {
+            eval(Str::replaceStart('<?php', '', Cache::get($siteCachePath)));
         }
     }
 
@@ -524,15 +528,38 @@ class Evo
         if (empty($context)) {
             $context = $this->getContext();
         }
-        if ($this->getLoginUserID($context) !== false) {
-            $result = $this->checkAccess($this->getLoginUserID($context));
+
+        $userId = $this->getLoginUserID($context);
+
+        if ($userId) {
+            $result = $this->checkAccess($userId);
             if ($result === false) {
-                UserManager::logout();
+                auth()->logout();
                 if (IN_MANAGER_MODE) {
                     $this->sendRedirect('/' . MGR_DIR);
                 }
             }
         }
+    }
+
+    /**
+     * @param $userId
+     * @return bool
+     */
+    public function checkAccess($userId): bool
+    {
+        if (empty($context)) {
+            $context = $this->getContext();
+        }
+
+        $user = User::query()->find($userId ?: $this->getLoginUserID($context));
+
+        return !(
+            is_null($user)
+            || $user->attributes->blocked != 0
+            || $user->attributes->blockeduntil > time()
+            || ($user->attributes->blockedafter < time() && $user->attributes->blockedafter > 0)
+        );
     }
 
     /**
@@ -1060,11 +1087,11 @@ class Evo
     public function evalPlugin(string $pluginCode, array $params): void
     {
         $modx = &$this;
-        if (!is_object($modx->event)) {
-            $modx->event = new stdClass();
+        if (!is_object($this->event)) {
+            $this->event = new stdClass();
         }
 
-        $modx->event->params = &$params; // store params inside event object
+        $this->event->params = &$params; // store params inside event object
 
         if (is_array($params)) {
             extract($params, EXTR_SKIP);
@@ -1113,7 +1140,7 @@ class Evo
         } else {
             echo $msg;
         }
-        unset($modx->event->params);
+        unset($this->event->params);
     }
 
     /**
@@ -1347,7 +1374,11 @@ class Evo
                 return (string) $this->_sendRedirectForRefPage($this->documentObject['content']);
             }
 
-            $template = app('evo.tpl')->getBladeDocumentContent();
+            try {
+                $template = app('evo.tpl')->getBladeDocumentContent();
+            } catch (BindingResolutionException) {
+                abort(400, 'Template not found');
+            }
 
             if ($template) {
                 $this->documentObject['cacheable'] = 0;
@@ -1371,7 +1402,10 @@ class Evo
                 //                }
 
                 try {
-                    $tpl = view()->make($template, $this->dataForView);
+                    $tpl = view()->make($template, $this->dataForView ?: [
+                        'modx' => $this,
+                        'documentObject' => $this->documentObject,
+                    ]);
                 } catch (BindingResolutionException) {
                     abort(400, 'Template not found');
                 }
@@ -1692,12 +1726,10 @@ class Evo
                 }
                 $documentObject = array_merge($documentObject, $tmplvars);
 
-                $template = SiteTemplate::query()
-                    ->select('templatealias', 'templatecontroller')
-                    ->firstWhere('id', $documentObject['template']);
+                $template = SiteTemplate::query()->firstWhere('id', $documentObject['template']);
 
-                $documentObject['templatealias'] = $template->templatealias;
-                $documentObject['templatecontroller'] = $template->templatecontroller;
+                $documentObject['templatealias'] = $template->templatealias ?? null;
+                $documentObject['templatecontroller'] = $template->templatecontroller ?? null;
             }
             $out = $this->invokeEvent(
                 'OnAfterLoadDocumentObject',
