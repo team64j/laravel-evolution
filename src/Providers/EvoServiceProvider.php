@@ -26,7 +26,7 @@ class EvoServiceProvider extends ServiceProvider
             return;
         }
 
-        $_SESSION = Legacy\Session::make(session()->all());
+        $_SESSION = new Legacy\Session;
 
         $this->registerLegacyAliases();
         $this->bladeDirectives();
