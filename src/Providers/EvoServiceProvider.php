@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace EvolutionCMS\Providers;
 
+use EvolutionCMS\Evo;
+use EvolutionCMS\Legacy;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
-use EvolutionCMS\Evo;
-use EvolutionCMS\Legacy;
 
 class EvoServiceProvider extends ServiceProvider
 {
@@ -22,6 +22,10 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
         $_SESSION = Legacy\Session::make(session()->all());
 
         $this->registerLegacyAliases();
@@ -62,6 +66,10 @@ class EvoServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            return;
+        }
+
         $this->registerConfig();
         $this->defineConstants();
         $this->defineRoutes();
