@@ -129,7 +129,7 @@ trait Settings
         //        }
 
         if (!Cache::has('config.global')) {
-            new \EvolutionCMS\Legacy\Cache($this)->buildCache();
+            (new \EvolutionCMS\Legacy\Cache($this))->buildCache();
         }
 
         $this->config = Cache::rememberForever(

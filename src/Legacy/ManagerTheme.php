@@ -6,7 +6,7 @@ namespace EvolutionCMS\Legacy;
 
 class ManagerTheme
 {
-    public function getActionId(): null
+    public function getActionId()
     {
         return null;
     }
