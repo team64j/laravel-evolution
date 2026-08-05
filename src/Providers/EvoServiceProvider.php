@@ -112,13 +112,33 @@ class EvoServiceProvider extends ServiceProvider
 
     protected function registerLegacyAliases(): void
     {
-        class_alias('\EvolutionCMS\Evo', '\DocumentParser');
-        class_alias('\EvolutionCMS\Legacy\Parser', '\DLTemplate');
-        class_alias('\EvolutionCMS\Legacy\Event', '\SystemEvent');
-        class_alias('\EvolutionCMS\Legacy\ManagerTheme', '\ManagerTheme');
-        class_alias('\EvolutionCMS\Facades\UrlProcessor', '\UrlProcessor');
-        class_alias('\EvolutionCMS\Providers\ServiceProvider', '\EvolutionCMS\ServiceProvider');
-        class_alias('\EvolutionCMS\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
+        if (!class_exists('\DocumentParser')) {
+            class_alias('\EvolutionCMS\Evo', '\DocumentParser');
+        }
+
+        if (!class_exists('\DLTemplate')) {
+            class_alias('\EvolutionCMS\Legacy\Parser', '\DLTemplate');
+        }
+
+        if (!class_exists('\SystemEvent')) {
+            class_alias('\EvolutionCMS\Legacy\Event', '\SystemEvent');
+        }
+
+        if (!class_exists('\ManagerTheme')) {
+            class_alias('\EvolutionCMS\Legacy\ManagerTheme', '\ManagerTheme');
+        }
+
+        if (!class_exists('\UrlProcessor')) {
+            class_alias('\EvolutionCMS\Facades\UrlProcessor', '\UrlProcessor');
+        }
+
+        if (!class_exists('\EvolutionCMS\ServiceProvider')) {
+            class_alias('\EvolutionCMS\Providers\ServiceProvider', '\EvolutionCMS\ServiceProvider');
+        }
+
+        if (!class_exists('\EvolutionCMS\TemplateController')) {
+            class_alias('\EvolutionCMS\Legacy\TemplateController', '\EvolutionCMS\TemplateController');
+        }
     }
 
     protected function registerShutdown(): void
